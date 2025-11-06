@@ -16,35 +16,38 @@ import {
   sendMessageAction,
 } from "../features/messages/messageAction";
 import { getStoredUser } from "../utils/storageFunction";
+import { useChatActions } from "../features/chats/chatAction";
 
 const ChatLayout = () => {
   const socket = useSocket();
   const dispatch = useDispatch();
+  const { openChat } = useChatActions();
 
-  const [activeChat, setActiveChat] = useState(null);
-  const [messageInput, setMessageInput] = useState("");
   const chatWindowRef = useRef(null);
+  const [messageInput, setMessageInput] = useState("");
 
   // Redux
   const { user, chatUsers = [] } = useSelector((store) => store.userStore);
+  const { activeChat } = useSelector((store) => store.chatStore);
   const messagesByChat = useSelector(
     (store) => store.message?.messagesByChat || {}
   );
-
   const messages = activeChat ? messagesByChat[activeChat._id] || [] : [];
 
-  // Load logged-in user from storage
+  // Load logged-in user from localStorage
   useEffect(() => {
-    const user = getStoredUser();
-    if (user) setUser(user);
+    const storedUser = getStoredUser();
+    if (storedUser) {
+      // optional: you can dispatch setUser if needed
+    }
   }, []);
 
-  // Fetch chat users once logged-in user is loaded
+  // Fetch chat users once
   useEffect(() => {
     dispatch(getChatUsersAction());
   }, [dispatch]);
 
-  // Load messages when a chat is selected
+  // Join chat room and fetch messages when activeChat changes
   useEffect(() => {
     if (activeChat) {
       dispatch(retrieveMessages(activeChat._id));
@@ -52,7 +55,7 @@ const ChatLayout = () => {
     }
   }, [activeChat, dispatch, socket]);
 
-  // Auto scroll chat window
+  // Scroll chat window automatically
   useEffect(() => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
@@ -84,11 +87,10 @@ const ChatLayout = () => {
 
     dispatch(sendMessageAction(payload));
     socket?.emit("send_message", payload);
-
     setMessageInput("");
   };
 
-  // Filter out logged-in user from chat list
+  // Filter out logged-in user from the user list
   const filteredChatUsers = user
     ? chatUsers.filter((u) => u._id !== user._id)
     : [];
@@ -99,7 +101,6 @@ const ChatLayout = () => {
         {/* LEFT: Users list */}
         <Col md={3} className="border-end overflow-auto">
           <h5 className="py-2 border-bottom">Chats</h5>
-
           {chatUsers.length === 0 ? (
             <div className="text-center mt-3">
               <Spinner animation="border" size="sm" /> Loading users...
@@ -112,8 +113,8 @@ const ChatLayout = () => {
                 <ListGroup.Item
                   key={u._id}
                   action
-                  active={activeChat?._id === u._id}
-                  onClick={() => setActiveChat(u)}
+                  active={activeChat?.members?.some((m) => m._id === u._id)}
+                  onClick={() => openChat(u._id)}
                   className="d-flex align-items-center"
                   style={{ cursor: "pointer" }}
                 >
@@ -137,7 +138,10 @@ const ChatLayout = () => {
             <>
               <div className="border-bottom p-2">
                 <strong>
-                  {activeChat.firstName} {activeChat.lastName}
+                  {activeChat.isGroup
+                    ? activeChat.name
+                    : activeChat.members.find((m) => m._id !== user._id)
+                        ?.firstName}
                 </strong>
               </div>
 
@@ -178,6 +182,7 @@ const ChatLayout = () => {
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   className="me-2"
+                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                 />
                 <Button onClick={handleSendMessage}>Send</Button>
               </div>

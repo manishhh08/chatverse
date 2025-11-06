@@ -18,11 +18,13 @@ export const retrieveMessages = (chatId) => async (dispatch) => {
 
 // Send a message for a specific chat
 export const sendMessageAction = (payload) => async (dispatch) => {
-  dispatch(addMessage({ chatId: payload.chatId, message: payload }));
-
   try {
     const data = await sendMessageApi(payload);
-    if (data.status !== "success") {
+
+    if (data.status === "success") {
+      // Add the properly saved message returned by backend
+      dispatch(addMessage({ chatId: payload.chatId, message: data.message }));
+    } else {
       console.error("Message failed to send", data);
     }
   } catch (err) {
