@@ -28,18 +28,8 @@ export const retrieveMessages = (chatId) => async (dispatch) => {
 // Send a message for a specific chat
 export const sendMessageAction = (message) => async (dispatch) => {
   try {
-    // Send to backend
-    const data = await sendMessageApi(message);
-
-    if (data.status === "success") {
-      // Use the message returned by backend
-      const savedMessage = data.message;
-
-      // Add to Redux state
-      dispatch(addMessage({ chatId: message.chatId, message: savedMessage }));
-    } else {
-      console.error("Message failed to send", data);
-    }
+    // Send message to backend
+    await sendMessageApi(message);
   } catch (err) {
     console.error("Error sending message:", err);
   }

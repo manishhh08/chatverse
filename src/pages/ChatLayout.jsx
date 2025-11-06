@@ -28,9 +28,7 @@ const ChatLayout = () => {
   // Redux
   const { user, chatUsers = [] } = useSelector((store) => store.userStore);
   const { activeChat } = useSelector((store) => store.chatStore);
-  const messagesByChat = useSelector(
-    (store) => store.message?.messagesByChat || {}
-  );
+  const { messagesByChat } = useSelector((store) => store.messageStore || {});
   const messages = activeChat ? messagesByChat[activeChat._id] || [] : [];
 
   // Fetch chat users once
@@ -38,18 +36,15 @@ const ChatLayout = () => {
     dispatch(getChatUsersAction());
   }, [dispatch]);
 
+  // Fetch messages & listen to socket
   useEffect(() => {
     if (!activeChat || !socket) return;
 
-    // Fetch existing messages from backend
     dispatch(retrieveMessages(activeChat._id));
 
-    // Join chat room
     socket.emit("join_chat", activeChat._id);
 
-    // Listen for new incoming messages
     const handleReceiveMessage = (message) => {
-      // Only add if it belongs to the current chat
       if (message.chatId === activeChat._id) {
         dispatch(addMessage({ chatId: activeChat._id, message }));
       }
@@ -57,12 +52,10 @@ const ChatLayout = () => {
 
     socket.on("receive_message", handleReceiveMessage);
 
-    return () => {
-      socket.off("receive_message", handleReceiveMessage);
-    };
+    return () => socket.off("receive_message", handleReceiveMessage);
   }, [activeChat, socket, dispatch]);
 
-  // Scroll chat window when messages change
+  // Auto-scroll chat window
   useEffect(() => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
@@ -81,7 +74,6 @@ const ChatLayout = () => {
     };
 
     dispatch(sendMessageAction(message));
-    socket.emit("send_message", message);
     setMessageInput("");
   };
 
@@ -92,60 +84,84 @@ const ChatLayout = () => {
 
   return (
     <Container fluid className="pt-2" style={{ height: "100vh" }}>
-      <Row className="h-100">
+      <Row className="h-100" style={{ minHeight: 0 }}>
         {/* Users List */}
-        <Col md={3} className="border-end overflow-auto">
-          <h5 className="py-2 border-bottom">Chats</h5>
-          {chatUsers.length === 0 ? (
-            <div className="text-center mt-3">
-              <Spinner animation="border" size="sm" /> Loading users...
-            </div>
-          ) : filteredChatUsers.length === 0 ? (
-            <div className="text-center mt-3 text-muted">No other users</div>
-          ) : (
-            <ListGroup variant="flush">
-              {filteredChatUsers.map((u) => (
-                <ListGroup.Item
-                  key={u._id}
-                  action
-                  active={activeChat?.members?.some((m) => m._id === u._id)}
-                  onClick={() => openChat(u._id)}
-                  className="d-flex align-items-center"
-                  style={{ cursor: "pointer" }}
-                >
-                  <div className="flex-grow-1">
-                    <strong>
-                      {u.firstName} {u.lastName}
-                    </strong>
-                    <div className="text-muted" style={{ fontSize: "12px" }}>
-                      {u.lastMessage || "No messages yet"}
+        <Col
+          md={3}
+          className="border-end d-flex flex-column"
+          style={{ height: "100%", minHeight: 0 }}
+        >
+          <h5 className="py-2 border-bottom flex-shrink-0">Chats</h5>
+
+          <div className="flex-grow-1 overflow-auto" style={{ minHeight: 0 }}>
+            {chatUsers.length === 0 ? (
+              <div className="text-center mt-3">
+                <Spinner animation="border" size="sm" /> Loading users...
+              </div>
+            ) : filteredChatUsers.length === 0 ? (
+              <div className="text-center mt-3 text-muted">No other users</div>
+            ) : (
+              <ListGroup variant="flush">
+                {filteredChatUsers.map((u) => (
+                  <ListGroup.Item
+                    key={u._id}
+                    action
+                    active={activeChat?.members?.some((m) => m._id === u._id)}
+                    onClick={() => openChat(u._id)}
+                    className="d-flex align-items-center"
+                    style={{ cursor: "pointer" }}
+                  >
+                    <div className="flex-grow-1">
+                      <strong>
+                        {u.firstName} {u.lastName}
+                      </strong>
+                      <div className="text-muted" style={{ fontSize: "12px" }}>
+                        {u.lastMessage || "No messages yet"}
+                      </div>
                     </div>
-                  </div>
-                </ListGroup.Item>
-              ))}
-            </ListGroup>
-          )}
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            )}
+          </div>
         </Col>
 
         {/* Chat Window */}
-        <Col md={9} xs={12} className="d-flex flex-column">
+        <Col
+          md={9}
+          xs={12}
+          className="d-flex flex-column"
+          style={{ height: "100%", minHeight: 0 }}
+        >
           {activeChat ? (
             <>
-              {/* Chat header */}
-              <div className="border-bottom p-2">
-                <strong>
-                  {activeChat.isGroup
-                    ? activeChat.name
-                    : activeChat.members.find((m) => m._id !== user._id)
-                        ?.firstName}
-                </strong>
+              {/* Header */}
+              <div className="border-bottom p-2 flex-shrink-0 bg-light">
+                {activeChat.isGroup ? (
+                  <strong>{activeChat.name}</strong>
+                ) : (
+                  (() => {
+                    const otherUser = activeChat.members.find(
+                      (m) => m._id !== user._id
+                    );
+                    return (
+                      <strong>
+                        Chat with {otherUser?.firstName} {otherUser?.lastName}
+                      </strong>
+                    );
+                  })()
+                )}
               </div>
 
               {/* Messages */}
               <div
                 ref={chatWindowRef}
-                className="flex-grow-1 overflow-auto p-3"
-                style={{ background: "#f8f9fa" }}
+                className="overflow-auto p-3"
+                style={{
+                  flexGrow: 1,
+                  minHeight: 0,
+                  background: "#f8f9fa",
+                }}
               >
                 {messages.map((msg) => {
                   const isMine = msg.senderId._id === user._id;
@@ -186,7 +202,7 @@ const ChatLayout = () => {
               </div>
 
               {/* Input */}
-              <div className="d-flex p-3 border-top">
+              <div className="d-flex p-3 border-top flex-shrink-0">
                 <Form.Control
                   type="text"
                   placeholder="Type a message..."
