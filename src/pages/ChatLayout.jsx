@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Col, Container, Row, Form, Button, ListGroup } from "react-bootstrap";
+import {
+  Col,
+  Container,
+  Row,
+  Form,
+  Button,
+  ListGroup,
+  Spinner,
+} from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { useSocket } from "../socketSetup/SocketContext";
 import { getChatUsersAction } from "../features/users/userAction";
@@ -7,6 +15,7 @@ import {
   retrieveMessages,
   sendMessageAction,
 } from "../features/messages/messageAction";
+import { getStoredUser } from "../utils/storageFunction";
 
 const ChatLayout = () => {
   const socket = useSocket();
@@ -14,24 +23,28 @@ const ChatLayout = () => {
 
   const [activeChat, setActiveChat] = useState(null);
   const [messageInput, setMessageInput] = useState("");
-
   const chatWindowRef = useRef(null);
 
   // Redux
-  const loggedInUser = useSelector((store) => store.userStore.user);
-  const chatUsers = useSelector((store) => store.userStore.chatUsers);
+  const { user, chatUsers = [] } = useSelector((store) => store.userStore);
   const messagesByChat = useSelector(
     (store) => store.message?.messagesByChat || {}
   );
 
   const messages = activeChat ? messagesByChat[activeChat._id] || [] : [];
 
-  // fetch chat users on page load
+  // Load logged-in user from storage
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user) setUser(user);
+  }, []);
+
+  // Fetch chat users once logged-in user is loaded
   useEffect(() => {
     dispatch(getChatUsersAction());
   }, [dispatch]);
 
-  // Load messages when chat selected
+  // Load messages when a chat is selected
   useEffect(() => {
     if (activeChat) {
       dispatch(retrieveMessages(activeChat._id));
@@ -39,14 +52,14 @@ const ChatLayout = () => {
     }
   }, [activeChat, dispatch, socket]);
 
-  // Auto scroll
+  // Auto scroll chat window
   useEffect(() => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Listen for new messages
+  // Listen for incoming messages
   useEffect(() => {
     if (!socket) return;
 
@@ -60,13 +73,13 @@ const ChatLayout = () => {
 
   // Send message
   const handleSendMessage = () => {
-    if (!messageInput.trim() || !activeChat) return;
+    if (!messageInput.trim() || !activeChat || !user) return;
 
     const payload = {
       chatId: activeChat._id,
       text: messageInput,
-      senderId: loggedInUser._id,
-      senderName: loggedInUser.firstName,
+      senderId: user._id,
+      senderName: user.firstName,
     };
 
     dispatch(sendMessageAction(payload));
@@ -75,6 +88,11 @@ const ChatLayout = () => {
     setMessageInput("");
   };
 
+  // Filter out logged-in user from chat list
+  const filteredChatUsers = user
+    ? chatUsers.filter((u) => u._id !== user._id)
+    : [];
+
   return (
     <Container fluid className="pt-2" style={{ height: "100vh" }}>
       <Row className="h-100">
@@ -82,10 +100,15 @@ const ChatLayout = () => {
         <Col md={3} className="border-end overflow-auto">
           <h5 className="py-2 border-bottom">Chats</h5>
 
-          <ListGroup variant="flush">
-            {chatUsers
-              .filter((u) => u._id !== loggedInUser._id)
-              .map((u) => (
+          {chatUsers.length === 0 ? (
+            <div className="text-center mt-3">
+              <Spinner animation="border" size="sm" /> Loading users...
+            </div>
+          ) : filteredChatUsers.length === 0 ? (
+            <div className="text-center mt-3 text-muted">No other users</div>
+          ) : (
+            <ListGroup variant="flush">
+              {filteredChatUsers.map((u) => (
                 <ListGroup.Item
                   key={u._id}
                   action
@@ -104,7 +127,8 @@ const ChatLayout = () => {
                   </div>
                 </ListGroup.Item>
               ))}
-          </ListGroup>
+            </ListGroup>
+          )}
         </Col>
 
         {/* RIGHT: Chat Window */}
@@ -123,7 +147,7 @@ const ChatLayout = () => {
                 style={{ background: "#f8f9fa" }}
               >
                 {messages.map((msg, idx) => {
-                  const isMine = msg.senderId === loggedInUser._id;
+                  const isMine = user && msg.senderId === user._id;
                   return (
                     <div
                       key={idx}

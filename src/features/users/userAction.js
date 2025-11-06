@@ -48,13 +48,15 @@ export const loginUserAction = (form) => async (dispatch) => {
     dispatch(setLoading(true));
     const data = await loginUserApi(form);
 
-    if (data?.status === "success" && data?.data) {
+    if (data?.status === "success" && data?.user) {
       storeAccessToken(data?.accessToken);
       storeRefreshToken(data?.refreshToken);
 
-      dispatch(setUser(data?.data));
+      dispatch(setUser(data?.user));
 
       toast.success("Logged in successfully");
+
+      dispatch(fetchUserDetail());
     } else {
       dispatch(setError(data?.message || "Login failed"));
       toast.error(data?.message || "Login failed");
@@ -81,8 +83,18 @@ export const getChatUsersAction = () => async (dispatch) => {
 };
 
 export const fetchUserAction = () => async (dispatch) => {
-  const data? = await fetchUserDetail();
-  if (data??.user?._id) dispatch(setUser(data?.user));
+  try {
+    dispatch(setLoading(true));
+    const data = await fetchUserDetail();
+
+    if (data?.status === "success" && data?.user) {
+      dispatch(setUser(data.user));
+    }
+  } catch (err) {
+    dispatch(setError("Failed to fetch user details"));
+  } finally {
+    dispatch(setLoading(false));
+  }
 };
 // Logout user
 export const logoutAction = () => (dispatch) => {
