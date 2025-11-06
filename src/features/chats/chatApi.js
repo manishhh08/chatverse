@@ -21,3 +21,11 @@ export const createChatApi = (members, isGroup = false, name) => {
     isPrivate: true,
   });
 };
+
+export const getChatByIdApi = (chatId) => {
+  return apiProcessor({
+    method: "get",
+    url: `${apiUrl}/chats/${chatId}`,
+    isPrivate: true,
+  });
+};

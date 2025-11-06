@@ -31,17 +31,33 @@ const ChatLayout = () => {
   const { messagesByChat } = useSelector((store) => store.messageStore || {});
   const messages = activeChat ? messagesByChat[activeChat._id] || [] : [];
 
+  // Persist active chat to localStorage
+  useEffect(() => {
+    if (activeChat) {
+      localStorage.setItem("activeChatId", activeChat._id);
+    }
+  }, [activeChat]);
+
+  // Restore active chat on mount
+  useEffect(() => {
+    if (!activeChat) {
+      const savedChatId = localStorage.getItem("activeChatId");
+      if (savedChatId) {
+        openChat(savedChatId);
+      }
+    }
+  }, [activeChat, openChat]);
+
   // Fetch chat users once
   useEffect(() => {
     dispatch(getChatUsersAction());
   }, [dispatch]);
 
-  // Fetch messages & listen to socket
+  // Fetch messages & listen for new messages
   useEffect(() => {
     if (!activeChat || !socket) return;
 
     dispatch(retrieveMessages(activeChat._id));
-
     socket.emit("join_chat", activeChat._id);
 
     const handleReceiveMessage = (message) => {
