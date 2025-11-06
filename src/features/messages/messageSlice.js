@@ -21,17 +21,8 @@ const messageSlice = createSlice({
     setLoading: (state, action) => {
       state.loading = action.payload;
     },
-    clearMessages: (state, action) => {
-      const { chatId } = action.payload;
-      if (chatId) {
-        state.messagesByChat[chatId] = [];
-      } else {
-        state.messagesByChat = {};
-      }
-    },
   },
 });
 
-export const { setMessages, addMessage, setLoading, clearMessages } =
-  messageSlice.actions;
+export const { setMessages, addMessage, setLoading } = messageSlice.actions;
 export default messageSlice.reducer;

@@ -7,7 +7,7 @@ export const retrieveMessages = (chatId) => async (dispatch) => {
     dispatch(setLoading(true));
     const data = await fetchMessageApi(chatId);
     if (data.status === "success") {
-      dispatch(setMessages({ chatId, messages: data.messages }));
+      dispatch(setMessages({ chatId, messages: data?.messages }));
     }
     dispatch(setLoading(false));
   } catch (err) {
@@ -23,7 +23,7 @@ export const sendMessageAction = (payload) => async (dispatch) => {
 
     if (data.status === "success") {
       // Add the properly saved message returned by backend
-      dispatch(addMessage({ chatId: payload.chatId, message: data.message }));
+      dispatch(addMessage({ chatId: payload.chatId, payload }));
     } else {
       console.error("Message failed to send", data);
     }

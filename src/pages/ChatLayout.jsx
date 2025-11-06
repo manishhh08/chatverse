@@ -15,14 +15,12 @@ import {
   retrieveMessages,
   sendMessageAction,
 } from "../features/messages/messageAction";
-import { getStoredUser } from "../utils/storageFunction";
 import { useChatActions } from "../features/chats/chatAction";
 
 const ChatLayout = () => {
   const socket = useSocket();
   const dispatch = useDispatch();
   const { openChat } = useChatActions();
-
   const chatWindowRef = useRef(null);
   const [messageInput, setMessageInput] = useState("");
 
@@ -34,28 +32,19 @@ const ChatLayout = () => {
   );
   const messages = activeChat ? messagesByChat[activeChat._id] || [] : [];
 
-  // Load logged-in user from localStorage
-  useEffect(() => {
-    const storedUser = getStoredUser();
-    if (storedUser) {
-      // optional: you can dispatch setUser if needed
-    }
-  }, []);
-
   // Fetch chat users once
   useEffect(() => {
     dispatch(getChatUsersAction());
   }, [dispatch]);
 
-  // Join chat room and fetch messages when activeChat changes
+  // Join chat room and load messages
   useEffect(() => {
-    if (activeChat) {
-      dispatch(retrieveMessages(activeChat._id));
-      socket?.emit("join_chat", activeChat._id);
-    }
+    if (!activeChat || !socket) return;
+    dispatch(retrieveMessages(activeChat._id));
+    socket.emit("join_chat", activeChat._id);
   }, [activeChat, dispatch, socket]);
 
-  // Scroll chat window automatically
+  // Scroll chat window
   useEffect(() => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
@@ -85,12 +74,11 @@ const ChatLayout = () => {
       senderName: user.firstName,
     };
 
-    dispatch(sendMessageAction(payload));
-    socket?.emit("send_message", payload);
+    dispatch(sendMessageAction(payload)); // immediately add to UI
+    socket.emit("send_message", payload); // emit to other user
     setMessageInput("");
   };
 
-  // Filter out logged-in user from the user list
   const filteredChatUsers = user
     ? chatUsers.filter((u) => u._id !== user._id)
     : [];
@@ -98,7 +86,7 @@ const ChatLayout = () => {
   return (
     <Container fluid className="pt-2" style={{ height: "100vh" }}>
       <Row className="h-100">
-        {/* LEFT: Users list */}
+        {/* Users List */}
         <Col md={3} className="border-end overflow-auto">
           <h5 className="py-2 border-bottom">Chats</h5>
           {chatUsers.length === 0 ? (
@@ -132,7 +120,7 @@ const ChatLayout = () => {
           )}
         </Col>
 
-        {/* RIGHT: Chat Window */}
+        {/* Chat Window */}
         <Col md={9} xs={12} className="d-flex flex-column">
           {activeChat ? (
             <>
@@ -150,11 +138,11 @@ const ChatLayout = () => {
                 className="flex-grow-1 overflow-auto p-3"
                 style={{ background: "#f8f9fa" }}
               >
-                {messages.map((msg, idx) => {
-                  const isMine = user && msg.senderId === user._id;
+                {messages.map((msg) => {
+                  const isMine = msg.senderId._id === user._id;
                   return (
                     <div
-                      key={idx}
+                      key={msg._id}
                       className={`d-flex mb-2 ${
                         isMine ? "justify-content-end" : "justify-content-start"
                       }`}
@@ -167,14 +155,13 @@ const ChatLayout = () => {
                         }`}
                         style={{ maxWidth: "70%" }}
                       >
-                        <div>{msg.text}</div>
+                        {msg.text}
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Input */}
               <div className="d-flex p-3 border-top">
                 <Form.Control
                   type="text"
