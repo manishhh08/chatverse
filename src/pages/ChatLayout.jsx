@@ -16,6 +16,7 @@ import {
   sendMessageAction,
 } from "../features/messages/messageAction";
 import { useChatActions } from "../features/chats/chatAction";
+import { addMessage } from "../features/messages/messageSlice";
 
 const ChatLayout = () => {
   const socket = useSocket();
@@ -37,48 +38,54 @@ const ChatLayout = () => {
     dispatch(getChatUsersAction());
   }, [dispatch]);
 
-  // Join chat room and load messages
   useEffect(() => {
     if (!activeChat || !socket) return;
-    dispatch(retrieveMessages(activeChat._id));
-    socket.emit("join_chat", activeChat._id);
-  }, [activeChat, dispatch, socket]);
 
-  // Scroll chat window
+    // Fetch existing messages from backend
+    dispatch(retrieveMessages(activeChat._id));
+
+    // Join chat room
+    socket.emit("join_chat", activeChat._id);
+
+    // Listen for new incoming messages
+    const handleReceiveMessage = (message) => {
+      // Only add if it belongs to the current chat
+      if (message.chatId === activeChat._id) {
+        dispatch(addMessage({ chatId: activeChat._id, message }));
+      }
+    };
+
+    socket.on("receive_message", handleReceiveMessage);
+
+    return () => {
+      socket.off("receive_message", handleReceiveMessage);
+    };
+  }, [activeChat, socket, dispatch]);
+
+  // Scroll chat window when messages change
   useEffect(() => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Listen for incoming messages
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleNewMessage = (message) => {
-      dispatch(sendMessageAction(message));
-    };
-
-    socket.on("receive_message", handleNewMessage);
-    return () => socket.off("receive_message", handleNewMessage);
-  }, [socket, dispatch]);
-
   // Send message
   const handleSendMessage = () => {
     if (!messageInput.trim() || !activeChat || !user) return;
 
-    const payload = {
+    const message = {
       chatId: activeChat._id,
       text: messageInput,
       senderId: user._id,
       senderName: user.firstName,
     };
 
-    dispatch(sendMessageAction(payload)); // immediately add to UI
-    socket.emit("send_message", payload); // emit to other user
+    dispatch(sendMessageAction(message));
+    socket.emit("send_message", message);
     setMessageInput("");
   };
 
+  // Filter out current user from chat users list
   const filteredChatUsers = user
     ? chatUsers.filter((u) => u._id !== user._id)
     : [];
@@ -124,6 +131,7 @@ const ChatLayout = () => {
         <Col md={9} xs={12} className="d-flex flex-column">
           {activeChat ? (
             <>
+              {/* Chat header */}
               <div className="border-bottom p-2">
                 <strong>
                   {activeChat.isGroup
@@ -133,6 +141,7 @@ const ChatLayout = () => {
                 </strong>
               </div>
 
+              {/* Messages */}
               <div
                 ref={chatWindowRef}
                 className="flex-grow-1 overflow-auto p-3"
@@ -140,6 +149,8 @@ const ChatLayout = () => {
               >
                 {messages.map((msg) => {
                   const isMine = msg.senderId._id === user._id;
+                  const senderName = isMine ? "You" : msg.senderId.username;
+
                   return (
                     <div
                       key={msg._id}
@@ -155,13 +166,26 @@ const ChatLayout = () => {
                         }`}
                         style={{ maxWidth: "70%" }}
                       >
-                        {msg.text}
+                        <strong style={{ fontSize: "12px" }}>
+                          {senderName}
+                        </strong>
+                        <div>{msg.text}</div>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "#666",
+                            textAlign: isMine ? "right" : "left",
+                          }}
+                        >
+                          {new Date(msg.createdAt).toLocaleTimeString()}
+                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
 
+              {/* Input */}
               <div className="d-flex p-3 border-top">
                 <Form.Control
                   type="text"
