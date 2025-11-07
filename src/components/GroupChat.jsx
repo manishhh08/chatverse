@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Modal, Button, Form } from "react-bootstrap";
 import { createChatApi } from "../features/chats/chatApi";
 import { addChat } from "../features/chats/chatSlice";
+import { useDispatch } from "react-redux";
 
 const GroupChat = ({ show, onClose, users, currentUser }) => {
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [groupName, setGroupName] = useState("");
+  const dispatch = useDispatch();
 
   const toggleMember = (id) => {
     setSelectedMembers((prev) =>
