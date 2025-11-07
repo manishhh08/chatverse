@@ -13,7 +13,7 @@ const PrivateLayout = () => {
 
   return (
     <Auth>
-      <main style={{ height: "100vh" }}>
+      <main className="bg-dark text-white d-flex flex-column min-vh-100">
         <Outlet />
       </main>
     </Auth>

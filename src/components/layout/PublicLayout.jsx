@@ -1,14 +1,22 @@
 import { Outlet } from "react-router-dom";
+import { Container } from "react-bootstrap";
 
 const PublicLayout = () => {
   return (
     <div>
-      <header className="bg-light p-3 text-center">
-        <h3>Welcome to ChatVerse</h3>
-      </header>
-
       {/* Page content */}
-      <main className="p-4">
+      <main className="bg-dark text-white d-flex flex-column vh-100">
+        {/* Welcome Header */}
+        <header className="py-4 border-bottom border-secondary">
+          <Container>
+            <h1 className="text-center">Welcome to Chatverse!</h1>
+            <p className="text-center text-white-50">
+              Please login or register to continue
+            </p>
+          </Container>
+        </header>
+
+        {/* Render child routes */}
         <Outlet />
       </main>
     </div>
