@@ -5,6 +5,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import ChatLayout from "./pages/ChatLayout";
 import { ToastContainer } from "react-toastify";
+import Verify from "./pages/Verify";
 
 const App = () => {
   return (
@@ -14,12 +15,14 @@ const App = () => {
         <Route element={<PublicLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="verify" element={<Verify />} />
           <Route path="/" element={<Login />} />
         </Route>
 
         {/* Private routes */}
         <Route element={<PrivateLayout />}>
           <Route path="/chat" element={<ChatLayout />} />
+          {/* <Route path="manage-account" element={<UserProfile />} /> */}
         </Route>
       </Routes>
 

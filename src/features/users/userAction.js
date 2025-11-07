@@ -4,6 +4,7 @@ import {
   fetchAllUsers,
   fetchUserDetail,
   loginUserApi,
+  verifyEmailAPi,
 } from "./userApi";
 import {
   setUser,
@@ -52,6 +53,8 @@ export const loginUserAction = (form) => async (dispatch) => {
       storeAccessToken(data?.accessToken);
       storeRefreshToken(data?.refreshToken);
 
+      localStorage.setItem("user", JSON.stringify(data?.user));
+
       dispatch(setUser(data?.user));
 
       toast.success("Logged in successfully");
@@ -96,8 +99,14 @@ export const fetchUserAction = () => async (dispatch) => {
     dispatch(setLoading(false));
   }
 };
+
+export const verifyEmailAction = async (token, email) => {
+  const result = await verifyEmailAPi(token, email);
+  return { status: result.status, message: result.message };
+};
 // Logout user
 export const logoutAction = () => (dispatch) => {
+  localStorage.removeItem("user");
   dispatch(logoutUser());
   deleteAccessToken();
   deleteRefreshToken();

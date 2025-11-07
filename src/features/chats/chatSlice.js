@@ -12,17 +12,33 @@ const chatSlice = createSlice({
   initialState,
   reducers: {
     setChats: (state, action) => {
-      state.chats = action.payload;
+      state.chats = action.payload.sort(
+        (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+      );
     },
     setActiveChat: (state, action) => {
       state.activeChat = action.payload;
     },
     addChat: (state, action) => {
-      state.chats.push(action.payload);
+      state.chats.unshift(action.payload);
     },
     setMessages: (state, action) => {
       const { chatId, messages } = action.payload;
       state.messages[chatId] = messages;
+    },
+    addMessage: (state, action) => {
+      const { chatId, message } = action.payload;
+
+      if (!state.messages[chatId]) state.messages[chatId] = [];
+      state.messages[chatId].push(message);
+
+      const chatIndex = state.chats.findIndex((c) => c._id === chatId);
+      if (chatIndex > -1) {
+        const chat = state.chats.splice(chatIndex, 1)[0];
+        chat.lastMessage = message.text;
+        chat.updatedAt = new Date();
+        state.chats.unshift(chat);
+      }
     },
     setChatLoading: (state, action) => {
       state.loading = action.payload;
@@ -30,7 +46,13 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setChats, setActiveChat, addChat, setChatLoading, setMessages } =
-  chatSlice.actions;
+export const {
+  setChats,
+  setActiveChat,
+  addChat,
+  setChatLoading,
+  addMessage,
+  setMessages,
+} = chatSlice.actions;
 
 export default chatSlice.reducer;

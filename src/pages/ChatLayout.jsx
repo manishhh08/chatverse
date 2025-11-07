@@ -10,24 +10,28 @@ import {
 } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { useSocket } from "../socketSetup/SocketContext";
-import { getChatUsersAction } from "../features/users/userAction";
+import { getChatUsersAction, logoutAction } from "../features/users/userAction";
 import {
   retrieveMessages,
   sendMessageAction,
 } from "../features/messages/messageAction";
-import { useChatActions } from "../features/chats/chatAction";
+import { getChatsAction, useChatActions } from "../features/chats/chatAction";
 import { addMessage } from "../features/messages/messageSlice";
+import { FaSignOutAlt, FaUser } from "react-icons/fa";
+import GroupChat from "../components/GroupChat";
+import { setActiveChat } from "../features/chats/chatSlice";
 
 const ChatLayout = () => {
   const socket = useSocket();
   const dispatch = useDispatch();
-  const { openChat } = useChatActions();
+  const { openChat, openChatById } = useChatActions();
   const chatWindowRef = useRef(null);
   const [messageInput, setMessageInput] = useState("");
+  const [showGroupModal, setShowGroupModal] = useState(false);
 
   // Redux
   const { user, chatUsers = [] } = useSelector((store) => store.userStore);
-  const { activeChat } = useSelector((store) => store.chatStore);
+  const { activeChat, chats } = useSelector((store) => store.chatStore);
   const { messagesByChat } = useSelector((store) => store.messageStore || {});
   const messages = activeChat ? messagesByChat[activeChat._id] || [] : [];
 
@@ -38,21 +42,24 @@ const ChatLayout = () => {
     }
   }, [activeChat]);
 
-  // Restore active chat on mount
-  useEffect(() => {
-    if (!activeChat) {
-      const savedChatId = localStorage.getItem("activeChatId");
-      if (savedChatId) {
-        openChat(savedChatId);
-      }
-    }
-  }, [activeChat, openChat]);
-
-  // Fetch chat users once
   useEffect(() => {
     dispatch(getChatUsersAction());
   }, [dispatch]);
+  useEffect(() => {
+    dispatch(getChatsAction());
+  }, [dispatch]);
 
+  useEffect(() => {
+    const savedChatId = localStorage.getItem("activeChatId");
+    if (!savedChatId || activeChat || chats.length === 0) return;
+
+    const savedChat = chats.find((c) => c._id === savedChatId);
+    if (savedChat) {
+      dispatch(setActiveChat(savedChat)); // restore chat
+      dispatch(retrieveMessages(savedChat._id)); // fetch messages
+      if (socket) socket.emit("join_chat", savedChat._id); // join socket room
+    }
+  }, [chats, activeChat, dispatch, socket]);
   // Fetch messages & listen for new messages
   useEffect(() => {
     if (!activeChat || !socket) return;
@@ -98,6 +105,12 @@ const ChatLayout = () => {
     ? chatUsers.filter((u) => u._id !== user._id)
     : [];
 
+  const handleLogout = () => {
+    dispatch(logoutAction());
+    toast.success("Logout successful");
+    navigate("/", { replace: true, state: {} });
+  };
+
   return (
     <Container fluid className="pt-2" style={{ height: "100vh" }}>
       <Row className="h-100" style={{ minHeight: 0 }}>
@@ -140,6 +153,31 @@ const ChatLayout = () => {
               </ListGroup>
             )}
           </div>
+          <div className="mt-auto d-flex flex-column gap-2 p-2">
+            <Button
+              variant="primary"
+              className="d-flex align-items-center justify-content-center gap-2 w-100"
+              onClick={() => setShowGroupModal(true)}
+            >
+              ➕ Create Group
+            </Button>
+
+            <Button
+              variant="outline-primary"
+              className="d-flex align-items-center justify-content-center gap-2 w-100"
+              onClick={() => console.log("User Details")}
+            >
+              <FaUser /> User Details
+            </Button>
+
+            <Button
+              variant="outline-danger"
+              className="d-flex align-items-center justify-content-center gap-2 w-100"
+              onClick={handleLogout}
+            >
+              <FaSignOutAlt /> Logout
+            </Button>
+          </div>
         </Col>
 
         {/* Chat Window */}
@@ -152,7 +190,7 @@ const ChatLayout = () => {
           {activeChat ? (
             <>
               {/* Header */}
-              <div className="border-bottom p-2 flex-shrink-0 bg-light">
+              <div className="border-bottom p-2 flex-shrink-0 bg-dark">
                 {activeChat.isGroup ? (
                   <strong>{activeChat.name}</strong>
                 ) : (
@@ -194,7 +232,7 @@ const ChatLayout = () => {
                         className={`p-2 rounded ${
                           isMine
                             ? "bg-primary text-white"
-                            : "bg-light text-dark"
+                            : "bg-success text-dark"
                         }`}
                         style={{ maxWidth: "70%" }}
                       >
@@ -237,6 +275,12 @@ const ChatLayout = () => {
           )}
         </Col>
       </Row>
+      <GroupChat
+        show={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        users={filteredChatUsers}
+        currentUser={user}
+      />
     </Container>
   );
 };

@@ -1,7 +1,7 @@
 // chatActions.js
 import { useDispatch, useSelector } from "react-redux";
-import { createChatApi, getChatByIdApi } from "./chatApi";
-import { addChat, setActiveChat, setChatLoading } from "./chatSlice";
+import { createChatApi, fetchChatApi, getChatByIdApi } from "./chatApi";
+import { addChat, setActiveChat, setChatLoading, setChats } from "./chatSlice";
 import { retrieveMessages } from "../messages/messageAction";
 
 export const useChatActions = () => {
@@ -76,4 +76,30 @@ export const useChatActions = () => {
   };
 
   return { openChat, openChatById };
+};
+export const getChatsAction = () => async (dispatch) => {
+  try {
+    dispatch(setChatLoading(true));
+
+    const result = await fetchChatApi();
+
+    if (result?.status === "success" && result?.chats) {
+      dispatch(setChats(result.chats));
+
+      // Optional: If you want to restore the last active chat here,
+      // you can do it after chats are fetched
+      const savedChatId = localStorage.getItem("activeChatId");
+      if (savedChatId) {
+        const savedChat = result.chats.find((c) => c._id === savedChatId);
+        if (savedChat) {
+          dispatch({ type: "chat/setActiveChat", payload: savedChat });
+          dispatch(retrieveMessages(savedChat._id));
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching chats:", err.message);
+  } finally {
+    dispatch(setChatLoading(false));
+  }
 };

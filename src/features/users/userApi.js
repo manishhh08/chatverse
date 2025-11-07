@@ -36,6 +36,14 @@ export const fetchAllUsers = async () => {
   });
 };
 
+export const verifyEmailAPi = async (token, email) => {
+  return apiProcessor({
+    method: "POST",
+    url: `${apiUrl}/auth/verify`,
+    data: { token, email },
+  });
+};
+
 // update customer detail
 export const updateUserDetail = async (obj) => {
   return apiProcessor({
