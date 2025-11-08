@@ -1,21 +1,18 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext } from "react";
 import { io } from "socket.io-client";
+import { getAccessToken } from "../utils/storageFunction";
 
-const SocketContext = createContext();
-export const SocketProvider = ({ children }) => {
-  const [socket, setSocket] = useState(null);
+export const socket = io(import.meta.env.VITE_APP_API_URL_PROD, {
+  auth: { token: getAccessToken() },
+  transports: ["websocket", "polling"],
+  secure: true,
+  autoConnect: false,
+});
 
-  useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_APP_API_URL, {
-      transports: ["websocket"],
-    });
-    setSocket(newSocket);
-    return () => newSocket.close();
-  }, []);
+const SocketContext = createContext(socket);
 
-  return (
-    <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>
-  );
-};
+export const SocketProvider = ({ children }) => (
+  <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>
+);
 
 export const useSocket = () => useContext(SocketContext);

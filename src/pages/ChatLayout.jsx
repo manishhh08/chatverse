@@ -21,6 +21,7 @@ import { FaSignOutAlt, FaUser } from "react-icons/fa";
 import GroupChat from "../components/GroupChat";
 import { setActiveChat } from "../features/chats/chatSlice";
 import { FiSend } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const ChatLayout = () => {
   const socket = useSocket();

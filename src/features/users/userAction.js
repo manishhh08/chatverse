@@ -19,6 +19,7 @@ import {
   deleteAccessToken,
   deleteRefreshToken,
 } from "../../utils/storageFunction";
+import { socket } from "../../socketSetup/SocketContext";
 
 // Register user
 export const registerUser = (form) => async (dispatch) => {
@@ -60,6 +61,9 @@ export const loginUserAction = (form) => async (dispatch) => {
       toast.success("Logged in successfully");
 
       dispatch(fetchUserDetail());
+
+      socket.auth = { token: data?.accessToken };
+      socket.connect();
     } else {
       dispatch(setError(data?.message || "Login failed"));
       toast.error(data?.message || "Login failed");
@@ -106,6 +110,7 @@ export const verifyEmailAction = async (token, email) => {
 };
 // Logout user
 export const logoutAction = () => (dispatch) => {
+  socket.disconnect();
   localStorage.removeItem("user");
   dispatch(logoutUser());
   deleteAccessToken();
