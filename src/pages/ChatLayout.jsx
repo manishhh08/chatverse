@@ -18,9 +18,9 @@ import {
 import { getChatsAction, useChatActions } from "../features/chats/chatAction";
 import { addMessage } from "../features/messages/messageSlice";
 import { FaSignOutAlt, FaUser } from "react-icons/fa";
+import { FiMessageSquare, FiSend } from "react-icons/fi";
 import GroupChat from "../components/GroupChat";
 import { setActiveChat } from "../features/chats/chatSlice";
-import { FiSend } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
@@ -197,6 +197,11 @@ const ChatLayout = () => {
                     const isActive = activeChat?.members?.some(
                       (m) => m._id === u._id
                     );
+
+                    const getInitials = (user) =>
+                      `${user.firstName[0] || ""}${
+                        user.lastName[0] || ""
+                      }`.toUpperCase();
                     return (
                       <ListGroup.Item
                         key={u._id}
@@ -209,6 +214,21 @@ const ChatLayout = () => {
                         }`}
                         style={{ cursor: "pointer", minHeight: "50px" }}
                       >
+                        {/* Avatar */}
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center me-3"
+                          style={{
+                            width: "40px",
+                            height: "40px",
+                            backgroundColor: "#e3a74d2a",
+                            fontWeight: "600",
+                            fontSize: "16px",
+                          }}
+                        >
+                          {getInitials(u)}
+                        </div>
+
+                        {/* Name */}
                         <div className="flex-grow-1 d-flex align-items-center">
                           <strong>
                             {u.firstName} {u.lastName}
@@ -280,58 +300,77 @@ const ChatLayout = () => {
               {/* Messages */}
               <div
                 ref={chatWindowRef}
-                className="overflow-auto p-3 flex-grow-1"
-                style={{
-                  minHeight: 0,
-                  backgroundColor: "#1a1a1a",
-                }}
+                className="overflow-auto p-3 flex-grow-1 d-flex flex-column"
+                style={{ minHeight: 0, backgroundColor: "#1a1a1a" }}
               >
-                {messages.map((msg) => {
-                  const isMine = msg.senderId._id === user._id;
-                  const senderName = isMine ? "You:" : msg.senderId.firstName;
+                {messages.length > 0 ? (
+                  messages.map((msg) => {
+                    const isMine = msg.senderId._id === user._id;
+                    const senderName = isMine ? "You" : msg.senderId.firstName;
 
-                  return (
-                    <div
-                      key={msg._id}
-                      className={`d-flex mb-2 ${
-                        isMine ? "justify-content-end" : "justify-content-start"
-                      }`}
-                    >
+                    return (
                       <div
-                        className={`p-2 rounded ${
+                        key={msg._id}
+                        className={`d-flex mb-2 ${
                           isMine
-                            ? "bg-primary text-white"
-                            : "bg-success text-white"
+                            ? "justify-content-end"
+                            : "justify-content-start"
                         }`}
-                        style={{
-                          maxWidth: "70%",
-                          wordBreak: "break-word",
-                          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                        }}
                       >
-                        <strong style={{ fontSize: "12px" }}>
-                          {senderName}:
-                        </strong>
-                        <div style={{ fontSize: "14px", marginTop: "2px" }}>
-                          {msg.text}
-                        </div>
                         <div
+                          className="text-white"
                           style={{
-                            fontSize: "10px",
-                            color: "#aaa",
-                            textAlign: isMine ? "right" : "left",
-                            marginTop: "2px",
+                            maxWidth: "50%", // compact width
+                            wordBreak: "break-word",
+                            overflowWrap: "break-word",
+                            display: "inline-block",
+                            marginLeft: isMine ? "10px" : "0",
+                            marginRight: isMine ? "0" : "10px",
+                            borderRadius: "20px",
+                            animation: "fadeIn 0.3s ease-in-out",
+                            background: isMine
+                              ? "linear-gradient(135deg, #4e54c8, #8f94fb)" // sender gradient (right)
+                              : "linear-gradient(135deg, #34e89e, #0f3443)", // receiver gradient (left)
+                            boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
+                            padding: "10px",
                           }}
                         >
-                          {new Date(msg.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          <strong style={{ fontSize: "12px" }}>
+                            {senderName}:
+                          </strong>
+                          <div style={{ fontSize: "14px", marginTop: "2px" }}>
+                            {msg.text}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              color: "#eee",
+                              textAlign: isMine ? "right" : "left",
+                              marginTop: "2px",
+                            }}
+                          >
+                            {new Date(msg.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <div className="d-flex flex-column justify-content-center align-items-center h-100 text-center text-muted">
+                    <FiMessageSquare
+                      size={60}
+                      className="mb-3 text-secondary"
+                    />
+                    <h5 className="text-white mb-2">No messages yet</h5>
+                    <p className="text-light mb-3">
+                      Start the conversation by typing a message{" "}
+                      <FiSend className="ms-1" />
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Input */}
