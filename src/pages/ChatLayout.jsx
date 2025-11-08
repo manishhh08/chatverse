@@ -20,6 +20,7 @@ import { addMessage } from "../features/messages/messageSlice";
 import { FaSignOutAlt, FaUser } from "react-icons/fa";
 import GroupChat from "../components/GroupChat";
 import { setActiveChat } from "../features/chats/chatSlice";
+import { FiSend } from "react-icons/fi";
 
 const ChatLayout = () => {
   const socket = useSocket();
@@ -265,7 +266,9 @@ const ChatLayout = () => {
                   className="me-2"
                   onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                 />
-                <Button onClick={handleSendMessage}>Send</Button>
+                <Button onClick={handleSendMessage}>
+                  <FiSend />
+                </Button>
               </div>
             </>
           ) : (
