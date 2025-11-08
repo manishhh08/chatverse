@@ -110,6 +110,7 @@ export const verifyEmailAction = async (token, email) => {
 };
 // Logout user
 export const logoutAction = () => (dispatch) => {
+  socket.removeAllListeners();
   socket.disconnect();
   localStorage.removeItem("user");
   dispatch(logoutUser());

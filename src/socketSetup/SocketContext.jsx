@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import { io } from "socket.io-client";
 import { getAccessToken } from "../utils/storageFunction";
 
-export const socket = io(import.meta.env.VITE_APP_API_URL_PROD, {
+export const socket = io(import.meta.env.VITE_APP_API_URL, {
   auth: { token: getAccessToken() },
   transports: ["websocket", "polling"],
   secure: true,
