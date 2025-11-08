@@ -18,6 +18,7 @@ import {
   storeRefreshToken,
   deleteAccessToken,
   deleteRefreshToken,
+  getAccessToken,
 } from "../../utils/storageFunction";
 import { socket } from "../../socketSetup/SocketContext";
 
@@ -44,6 +45,18 @@ export const registerUser = (form) => async (dispatch) => {
   }
 };
 
+//fetch user action
+export const fetchUserDetailAction = () => async (dispatch) => {
+  try {
+    const data = await fetchUserDetail();
+
+    if (data?.status === "success") {
+      dispatch(setUser(data.user));
+    }
+  } catch (error) {
+    console.log(error.message);
+  }
+};
 // Login user
 export const loginUserAction = (form) => async (dispatch) => {
   try {
@@ -60,7 +73,7 @@ export const loginUserAction = (form) => async (dispatch) => {
 
       toast.success("Logged in successfully");
 
-      dispatch(fetchUserDetail());
+      dispatch(fetchUserDetailAction());
 
       socket.auth = { token: data?.accessToken };
       socket.connect();
@@ -89,9 +102,14 @@ export const getChatUsersAction = () => async (dispatch) => {
   }
 };
 
-export const fetchUserAction = () => async (dispatch) => {
+export const fetchUserAction = () => async (dispatch, getState) => {
+  const token = getAccessToken(); // check token
+
+  if (!token) return; // skip fetch entirely if no token
+
   try {
     dispatch(setLoading(true));
+
     const data = await fetchUserDetail();
 
     if (data?.status === "success" && data?.user) {

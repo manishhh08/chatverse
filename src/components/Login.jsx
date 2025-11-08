@@ -12,6 +12,7 @@ import {
 import { useNavigate, Link } from "react-router-dom";
 import { FaEnvelope, FaLock } from "react-icons/fa";
 import { loginUserAction } from "../features/users/userAction";
+import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -60,6 +61,7 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="bg-dark text-white border-0"
+                    style={{ flex: 1 }}
                   />
                 </div>
               </Form.Group>
@@ -75,15 +77,19 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="bg-dark text-white border-0"
+                    style={{ flex: 1 }}
                   />
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="text-white ms-2 p-0"
+                  <span
                     onClick={() => setShowPassword(!showPassword)}
+                    style={{ cursor: "pointer" }}
+                    className="ms-2 text-white"
                   >
-                    {showPassword ? "Hide" : "Show"}
-                  </Button>
+                    {showPassword ? (
+                      <AiFillEyeInvisible size={20} />
+                    ) : (
+                      <AiFillEye size={20} />
+                    )}
+                  </span>
                 </div>
               </Form.Group>
 

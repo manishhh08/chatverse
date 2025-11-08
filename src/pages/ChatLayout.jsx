@@ -22,14 +22,18 @@ import GroupChat from "../components/GroupChat";
 import { setActiveChat } from "../features/chats/chatSlice";
 import { FiSend } from "react-icons/fi";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 const ChatLayout = () => {
   const socket = useSocket();
   const dispatch = useDispatch();
-  const { openChat, openChatById } = useChatActions();
+  const navigate = useNavigate();
+  const { openChat } = useChatActions();
   const chatWindowRef = useRef(null);
   const [messageInput, setMessageInput] = useState("");
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const prevChatRef = useRef(null);
 
   // Redux
   const { user, chatUsers = [] } = useSelector((store) => store.userStore);
@@ -39,36 +43,69 @@ const ChatLayout = () => {
 
   // Persist active chat to localStorage
   useEffect(() => {
-    if (activeChat) {
-      localStorage.setItem("activeChatId", activeChat._id);
-    }
+    if (activeChat) localStorage.setItem("activeChatId", activeChat._id);
   }, [activeChat]);
 
   useEffect(() => {
     dispatch(getChatUsersAction());
   }, [dispatch]);
+
   useEffect(() => {
     dispatch(getChatsAction());
   }, [dispatch]);
 
-  useEffect(() => {
-    const savedChatId = localStorage.getItem("activeChatId");
-    if (!savedChatId || activeChat || chats.length === 0) return;
+  // useEffect(() => {
+  //   const savedChatId = localStorage.getItem("activeChatId");
+  //   if (!savedChatId || activeChat || chats.length === 0) return;
 
-    const savedChat = chats.find((c) => c._id === savedChatId);
-    if (savedChat) {
-      dispatch(setActiveChat(savedChat)); // restore chat
-      dispatch(retrieveMessages(savedChat._id)); // fetch messages
-      if (socket) socket.emit("join_chat", savedChat._id); // join socket room
-    }
-  }, [chats, activeChat, dispatch, socket]);
-  // Fetch messages & listen for new messages
+  //   const savedChat = chats.find((c) => c._id === savedChatId);
+  //   if (savedChat) {
+  //     dispatch(setActiveChat(savedChat));
+  //     dispatch(retrieveMessages(savedChat._id));
+  //     if (socket) socket.emit("join_chat", savedChat._id);
+  //   }
+  // }, [chats, activeChat, dispatch, socket]);
+
+  // useEffect(() => {
+  //   if (!activeChat || !socket) return;
+
+  //   dispatch(retrieveMessages(activeChat._id));
+  //   socket.emit("join_chat", activeChat._id);
+
+  //   const handleReceiveMessage = (message) => {
+  //     if (message.chatId === activeChat._id) {
+  //       dispatch(addMessage({ chatId: activeChat._id, message }));
+  //     }
+  //   };
+
+  //   socket.on("receive_message", handleReceiveMessage);
+  //   return () => socket.off("receive_message", handleReceiveMessage);
+  // }, [activeChat, socket, dispatch]);
+
+  // useEffect(() => {
+  //   if (!activeChat) return;
+
+  //   dispatch(retrieveMessages(activeChat._id));
+  // }, [activeChat, dispatch]);
+
+  // Socket join/leave
+
   useEffect(() => {
     if (!activeChat || !socket) return;
 
-    dispatch(retrieveMessages(activeChat._id));
-    socket.emit("join_chat", activeChat._id);
+    // Leave previous chat if any
+    if (prevChatRef.current && prevChatRef.current !== activeChat._id) {
+      socket.emit("leave_chat", prevChatRef.current);
+    }
 
+    // Join new chat
+    socket.emit("join_chat", activeChat._id);
+    prevChatRef.current = activeChat._id;
+
+    // Fetch messages for this chat
+    dispatch(retrieveMessages(activeChat._id));
+
+    // Listen for incoming messages
     const handleReceiveMessage = (message) => {
       if (message.chatId === activeChat._id) {
         dispatch(addMessage({ chatId: activeChat._id, message }));
@@ -79,15 +116,12 @@ const ChatLayout = () => {
 
     return () => socket.off("receive_message", handleReceiveMessage);
   }, [activeChat, socket, dispatch]);
-
-  // Auto-scroll chat window
   useEffect(() => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Send message
   const handleSendMessage = () => {
     if (!messageInput.trim() || !activeChat || !user) return;
 
@@ -102,7 +136,6 @@ const ChatLayout = () => {
     setMessageInput("");
   };
 
-  // Filter out current user from chat users list
   const filteredChatUsers = user
     ? chatUsers.filter((u) => u._id !== user._id)
     : [];
@@ -110,7 +143,7 @@ const ChatLayout = () => {
   const handleLogout = () => {
     dispatch(logoutAction());
     toast.success("Logout successful");
-    navigate("/", { replace: true, state: {} });
+    navigate("/", { replace: true });
   };
 
   return (
@@ -122,63 +155,98 @@ const ChatLayout = () => {
           className="border-end d-flex flex-column"
           style={{ height: "100%", minHeight: 0 }}
         >
-          <h5 className="py-2 border-bottom flex-shrink-0">Chats</h5>
+          <h5 className="py-2 border-bottom flex-shrink-0 text-white">Chats</h5>
 
-          <div className="flex-grow-1 overflow-auto" style={{ minHeight: 0 }}>
-            {chatUsers.length === 0 ? (
-              <div className="text-center mt-3">
-                <Spinner animation="border" size="sm" /> Loading users...
-              </div>
-            ) : filteredChatUsers.length === 0 ? (
-              <div className="text-center mt-3 text-muted">No other users</div>
-            ) : (
-              <ListGroup variant="flush">
-                {filteredChatUsers.map((u) => (
-                  <ListGroup.Item
-                    key={u._id}
-                    action
-                    active={activeChat?.members?.some((m) => m._id === u._id)}
-                    onClick={() => openChat(u._id)}
-                    className="d-flex align-items-center"
-                    style={{ cursor: "pointer" }}
-                  >
-                    <div className="flex-grow-1">
-                      <strong>
-                        {u.firstName} {u.lastName}
-                      </strong>
-                      <div className="text-muted" style={{ fontSize: "12px" }}>
-                        {u.lastMessage || "No messages yet"}
-                      </div>
-                    </div>
-                  </ListGroup.Item>
-                ))}
-              </ListGroup>
-            )}
-          </div>
-          <div className="mt-auto d-flex flex-column gap-2 p-2">
-            <Button
-              variant="primary"
-              className="d-flex align-items-center justify-content-center gap-2 w-100"
-              onClick={() => setShowGroupModal(true)}
-            >
-              ➕ Create Group
-            </Button>
+          <div
+            className="flex-grow-1 d-flex flex-column"
+            style={{ minHeight: 0, backgroundColor: "#1a1a1a" }}
+          >
+            {/* Search Bar */}
+            <div className="p-2 mb-2">
+              <style>
+                {`
+      .chat-input::placeholder {
+        color: #ffffff;  /* white text */
+        opacity: 1;      /* make sure it’s fully opaque */
+      }
+    `}
+              </style>
+              <Form.Control
+                type="text"
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-dark text-white border border-secondary chat-input"
+                style={{ fontSize: "14px", minHeight: "40px" }}
+              />
+            </div>
 
-            <Button
-              variant="outline-primary"
-              className="d-flex align-items-center justify-content-center gap-2 w-100"
-              onClick={() => console.log("User Details")}
-            >
-              <FaUser /> User Details
-            </Button>
+            {/* User List */}
+            <div className="flex-grow-1 overflow-auto" style={{ minHeight: 0 }}>
+              {chatUsers.length === 0 ? (
+                <div className="text-center mt-3 text-white">
+                  <Spinner animation="border" size="sm" /> Loading users...
+                </div>
+              ) : filteredChatUsers.length === 0 ? (
+                <div className="text-center mt-3 text-muted">
+                  No other users
+                </div>
+              ) : (
+                <ListGroup variant="flush" className="bg-dark text-white">
+                  {filteredChatUsers.map((u) => {
+                    const isActive = activeChat?.members?.some(
+                      (m) => m._id === u._id
+                    );
+                    return (
+                      <ListGroup.Item
+                        key={u._id}
+                        action
+                        onClick={() => openChat(u._id)}
+                        className={`d-flex align-items-center ${
+                          isActive
+                            ? "bg-primary text-white"
+                            : "bg-dark text-white"
+                        }`}
+                        style={{ cursor: "pointer", minHeight: "50px" }}
+                      >
+                        <div className="flex-grow-1 d-flex align-items-center">
+                          <strong>
+                            {u.firstName} {u.lastName}
+                          </strong>
+                        </div>
+                      </ListGroup.Item>
+                    );
+                  })}
+                </ListGroup>
+              )}
+            </div>
 
-            <Button
-              variant="outline-danger"
-              className="d-flex align-items-center justify-content-center gap-2 w-100"
-              onClick={handleLogout}
-            >
-              <FaSignOutAlt /> Logout
-            </Button>
+            {/* Bottom Buttons */}
+            <div className="mt-auto d-flex flex-column gap-2 p-2">
+              <Button
+                variant="primary"
+                className="d-flex align-items-center justify-content-center gap-2 w-100"
+                onClick={() => setShowGroupModal(true)}
+              >
+                ➕ Create Group
+              </Button>
+
+              <Button
+                variant="outline-primary"
+                className="d-flex align-items-center justify-content-center gap-2 w-100"
+                onClick={() => console.log("User Details")}
+              >
+                <FaUser /> User Details
+              </Button>
+
+              <Button
+                variant="outline-danger"
+                className="d-flex align-items-center justify-content-center gap-2 w-100"
+                onClick={handleLogout}
+              >
+                <FaSignOutAlt /> Logout
+              </Button>
+            </div>
           </div>
         </Col>
 
@@ -192,7 +260,7 @@ const ChatLayout = () => {
           {activeChat ? (
             <>
               {/* Header */}
-              <div className="border-bottom p-2 flex-shrink-0 bg-dark">
+              <div className="border-bottom p-2 flex-shrink-0 bg-dark text-white">
                 {activeChat.isGroup ? (
                   <strong>{activeChat.name}</strong>
                 ) : (
@@ -212,16 +280,15 @@ const ChatLayout = () => {
               {/* Messages */}
               <div
                 ref={chatWindowRef}
-                className="overflow-auto p-3"
+                className="overflow-auto p-3 flex-grow-1"
                 style={{
-                  flexGrow: 1,
                   minHeight: 0,
-                  background: "#f8f9fa",
+                  backgroundColor: "#1a1a1a",
                 }}
               >
                 {messages.map((msg) => {
                   const isMine = msg.senderId._id === user._id;
-                  const senderName = isMine ? "You" : msg.senderId.username;
+                  const senderName = isMine ? "You:" : msg.senderId.firstName;
 
                   return (
                     <div
@@ -234,22 +301,32 @@ const ChatLayout = () => {
                         className={`p-2 rounded ${
                           isMine
                             ? "bg-primary text-white"
-                            : "bg-success text-dark"
+                            : "bg-success text-white"
                         }`}
-                        style={{ maxWidth: "70%" }}
+                        style={{
+                          maxWidth: "70%",
+                          wordBreak: "break-word",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                        }}
                       >
                         <strong style={{ fontSize: "12px" }}>
-                          {senderName}
+                          {senderName}:
                         </strong>
-                        <div>{msg.text}</div>
+                        <div style={{ fontSize: "14px", marginTop: "2px" }}>
+                          {msg.text}
+                        </div>
                         <div
                           style={{
                             fontSize: "10px",
-                            color: "#666",
+                            color: "#aaa",
                             textAlign: isMine ? "right" : "left",
+                            marginTop: "2px",
                           }}
                         >
-                          {new Date(msg.createdAt).toLocaleTimeString()}
+                          {new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </div>
                       </div>
                     </div>
@@ -259,13 +336,32 @@ const ChatLayout = () => {
 
               {/* Input */}
               <div className="d-flex p-3 border-top flex-shrink-0">
+                <style>
+                  {`
+      .chat-input::placeholder {
+        color: #f8f9fa; 
+        opacity: 1;
+      }
+    `}
+                </style>
                 <Form.Control
                   type="text"
                   placeholder="Type a message..."
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  className="me-2"
-                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                  className="me-2 border-0 chat-input"
+                  style={{
+                    fontSize: "14px",
+                    color: "white", // typed text
+                    backgroundColor: "#343a40",
+                    minHeight: "40px",
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
                 />
                 <Button onClick={handleSendMessage}>
                   <FiSend />
@@ -279,6 +375,7 @@ const ChatLayout = () => {
           )}
         </Col>
       </Row>
+
       <GroupChat
         show={showGroupModal}
         onClose={() => setShowGroupModal(false)}

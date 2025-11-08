@@ -9,6 +9,7 @@ import {
   Form,
   Alert,
 } from "react-bootstrap";
+import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
 import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
 import { useNavigate, Link } from "react-router-dom";
 import { registerUser } from "../features/users/userAction";
@@ -140,7 +141,11 @@ const Register = () => {
                     className="text-white ms-2 p-0"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? "Hide" : "Show"}
+                    {showPassword ? (
+                      <AiFillEyeInvisible size={20} />
+                    ) : (
+                      <AiFillEye size={20} />
+                    )}
                   </Button>
                 </div>
               </Form.Group>
@@ -163,7 +168,11 @@ const Register = () => {
                     className="text-white ms-2 p-0"
                     onClick={() => setShowConfirm(!showConfirm)}
                   >
-                    {showConfirm ? "Hide" : "Show"}
+                    {showConfirm ? (
+                      <AiFillEyeInvisible size={20} />
+                    ) : (
+                      <AiFillEye size={20} />
+                    )}
                   </Button>
                 </div>
               </Form.Group>
