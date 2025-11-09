@@ -7,6 +7,9 @@ import {
   Button,
   ListGroup,
   Spinner,
+  Tooltip,
+  OverlayTrigger,
+  Accordion,
 } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { useSocket } from "../socketSetup/SocketContext";
@@ -18,9 +21,8 @@ import {
 import { getChatsAction, useChatActions } from "../features/chats/chatAction";
 import { addMessage } from "../features/messages/messageSlice";
 import { FaSignOutAlt, FaUser } from "react-icons/fa";
-import { FiMessageSquare, FiSend } from "react-icons/fi";
+import { FiMessageSquare, FiSend, FiUsers } from "react-icons/fi";
 import GroupChat from "../components/GroupChat";
-import { setActiveChat } from "../features/chats/chatSlice";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
@@ -28,12 +30,16 @@ const ChatLayout = () => {
   const socket = useSocket();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { openChat } = useChatActions();
+  const { openChat, openChatById } = useChatActions();
+
   const chatWindowRef = useRef(null);
+  const prevChatRef = useRef(null);
+  const restoredRef = useRef(false);
+
   const [messageInput, setMessageInput] = useState("");
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const prevChatRef = useRef(null);
 
   // Redux
   const { user, chatUsers = [] } = useSelector((store) => store.userStore);
@@ -41,81 +47,82 @@ const ChatLayout = () => {
   const { messagesByChat } = useSelector((store) => store.messageStore || {});
   const messages = activeChat ? messagesByChat[activeChat._id] || [] : [];
 
-  // Persist active chat to localStorage
+  const directChats = chats.filter((c) => !c.isGroup);
+  const groupChats = chats.filter((c) => c.isGroup);
+
+  const filteredDirectChats = directChats.filter((c) => {
+    if (!searchTerm) return true;
+    const otherUser = c.members.find((m) => m._id !== user._id);
+    return otherUser?.firstName
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+  });
+
+  const filteredGroupChats = groupChats.filter((c) => {
+    if (!searchTerm) return true;
+    return c.name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const getInitials = (user) =>
+    `${user?.firstName[0] || ""}${user?.lastName[0] || ""}`.toUpperCase();
+
   useEffect(() => {
     if (activeChat) localStorage.setItem("activeChatId", activeChat._id);
   }, [activeChat]);
 
   useEffect(() => {
     dispatch(getChatUsersAction());
-  }, [dispatch]);
-
-  useEffect(() => {
     dispatch(getChatsAction());
   }, [dispatch]);
 
-  // useEffect(() => {
-  //   const savedChatId = localStorage.getItem("activeChatId");
-  //   if (!savedChatId || activeChat || chats.length === 0) return;
-
-  //   const savedChat = chats.find((c) => c._id === savedChatId);
-  //   if (savedChat) {
-  //     dispatch(setActiveChat(savedChat));
-  //     dispatch(retrieveMessages(savedChat._id));
-  //     if (socket) socket.emit("join_chat", savedChat._id);
-  //   }
-  // }, [chats, activeChat, dispatch, socket]);
-
-  // useEffect(() => {
-  //   if (!activeChat || !socket) return;
-
-  //   dispatch(retrieveMessages(activeChat._id));
-  //   socket.emit("join_chat", activeChat._id);
-
-  //   const handleReceiveMessage = (message) => {
-  //     if (message.chatId === activeChat._id) {
-  //       dispatch(addMessage({ chatId: activeChat._id, message }));
-  //     }
-  //   };
-
-  //   socket.on("receive_message", handleReceiveMessage);
-  //   return () => socket.off("receive_message", handleReceiveMessage);
-  // }, [activeChat, socket, dispatch]);
-
-  // useEffect(() => {
-  //   if (!activeChat) return;
-
-  //   dispatch(retrieveMessages(activeChat._id));
-  // }, [activeChat, dispatch]);
-
-  // Socket join/leave
+  useEffect(() => {
+    if (!restoredRef.current) {
+      const savedChatId = localStorage.getItem("activeChatId");
+      if (savedChatId) openChatById(savedChatId);
+      restoredRef.current = true;
+    }
+  }, [openChatById]);
 
   useEffect(() => {
-    if (!activeChat || !socket) return;
+    if (!socket) return;
 
-    // Leave previous chat if any
-    if (prevChatRef.current && prevChatRef.current !== activeChat._id) {
+    const handleConnect = () => setSocketConnected(true);
+    const handleDisconnect = () => setSocketConnected(false);
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket || !socketConnected || !activeChat) return;
+
+    const chatId = activeChat._id;
+
+    if (prevChatRef.current && prevChatRef.current !== chatId) {
       socket.emit("leave_chat", prevChatRef.current);
     }
 
-    // Join new chat
-    socket.emit("join_chat", activeChat._id);
-    prevChatRef.current = activeChat._id;
+    socket.emit("join_chat", chatId);
+    prevChatRef.current = chatId;
 
-    // Fetch messages for this chat
-    dispatch(retrieveMessages(activeChat._id));
+    dispatch(retrieveMessages(chatId));
 
-    // Listen for incoming messages
     const handleReceiveMessage = (message) => {
-      if (message.chatId === activeChat._id) {
-        dispatch(addMessage({ chatId: activeChat._id, message }));
+      if (message.chatId === chatId) {
+        dispatch(addMessage({ chatId, message }));
       }
     };
 
     socket.on("receive_message", handleReceiveMessage);
 
     return () => socket.off("receive_message", handleReceiveMessage);
-  }, [activeChat, socket, dispatch]);
+  }, [socket, socketConnected, activeChat, dispatch]);
+
   useEffect(() => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
@@ -136,20 +143,70 @@ const ChatLayout = () => {
     setMessageInput("");
   };
 
-  const filteredChatUsers = user
-    ? chatUsers.filter((u) => u._id !== user._id)
-    : [];
-
   const handleLogout = () => {
     dispatch(logoutAction());
     toast.success("Logout successful");
     navigate("/", { replace: true });
   };
 
+  const usersNotInChats = chatUsers.filter((u) => {
+    if (u._id === user._id) return false;
+    return !chats.some(
+      (c) => !c.isGroup && c.members.some((m) => m._id === u._id)
+    );
+  });
+
+  const renderChatList = (chatList, isGroup = false) => (
+    <ListGroup variant="flush" className="bg-dark text-white">
+      {chatList.map((c) => {
+        const isActive = activeChat?._id === c._id;
+        const displayName = isGroup
+          ? c.name
+          : c.members.find((m) => m._id !== user._id)?.firstName || "Unknown";
+        const unreadCount = c.unreadCount || 0;
+
+        return (
+          <ListGroup.Item
+            key={c._id}
+            action
+            onClick={() => openChatById(c._id)}
+            className={`d-flex align-items-center ${
+              isActive ? "bg-primary text-white" : "bg-dark text-white"
+            }`}
+            style={{ cursor: "pointer", minHeight: "50px" }}
+          >
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center me-3"
+              style={{
+                width: "40px",
+                height: "40px",
+                backgroundColor: isGroup ? "#34e89e4d" : "#e3a74d2a",
+                fontWeight: "600",
+                fontSize: "16px",
+              }}
+            >
+              {isGroup ? (
+                <FiUsers />
+              ) : (
+                getInitials(c.members.find((m) => m._id !== user._id))
+              )}
+            </div>
+            <div className="flex-grow-1 d-flex align-items-center justify-content-between">
+              <strong>{displayName}</strong>
+              {unreadCount > 0 && (
+                <span className="badge bg-danger ms-2">{unreadCount}</span>
+              )}
+            </div>
+          </ListGroup.Item>
+        );
+      })}
+    </ListGroup>
+  );
+
   return (
     <Container fluid className="pt-2" style={{ height: "100vh" }}>
       <Row className="h-100" style={{ minHeight: 0 }}>
-        {/* Users List */}
+        {/* Sidebar */}
         <Col
           md={3}
           className="border-end d-flex flex-column"
@@ -157,23 +214,20 @@ const ChatLayout = () => {
         >
           <h5 className="py-2 border-bottom flex-shrink-0 text-white">Chats</h5>
 
+          {/* Scrollable content */}
           <div
             className="flex-grow-1 d-flex flex-column"
-            style={{ minHeight: 0, backgroundColor: "#1a1a1a" }}
+            style={{
+              minHeight: 0,
+              backgroundColor: "#1a1a1a",
+              overflow: "hidden",
+            }}
           >
-            {/* Search Bar */}
-            <div className="p-2 mb-2">
-              <style>
-                {`
-      .chat-input::placeholder {
-        color: #ffffff;  /* white text */
-        opacity: 1;      /* make sure it’s fully opaque */
-      }
-    `}
-              </style>
+            {/* Search */}
+            <div className="p-2 flex-shrink-0">
               <Form.Control
                 type="text"
-                placeholder="Search users..."
+                placeholder="Search chats..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="bg-dark text-white border border-secondary chat-input"
@@ -181,68 +235,95 @@ const ChatLayout = () => {
               />
             </div>
 
-            {/* User List */}
-            <div className="flex-grow-1 overflow-auto" style={{ minHeight: 0 }}>
-              {chatUsers.length === 0 ? (
-                <div className="text-center mt-3 text-white">
-                  <Spinner animation="border" size="sm" /> Loading users...
-                </div>
-              ) : filteredChatUsers.length === 0 ? (
-                <div className="text-center mt-3 text-muted">
-                  No other users
-                </div>
-              ) : (
-                <ListGroup variant="flush" className="bg-dark text-white">
-                  {filteredChatUsers.map((u) => {
-                    const isActive = activeChat?.members?.some(
-                      (m) => m._id === u._id
-                    );
+            {/* Chat lists container scrollable */}
+            <div
+              className="flex-grow-1 overflow-auto"
+              style={{ minHeight: 0, padding: "0 0.5rem" }}
+            >
+              {/* Direct Chats */}
+              <div className="mb-3">
+                <h6 className="text-white">Direct Chats</h6>
+                {filteredDirectChats.length ? (
+                  renderChatList(filteredDirectChats)
+                ) : (
+                  <div className="text-muted text-center py-2">
+                    No direct chats
+                  </div>
+                )}
+              </div>
 
-                    const getInitials = (user) =>
-                      `${user.firstName[0] || ""}${
-                        user.lastName[0] || ""
-                      }`.toUpperCase();
-                    return (
-                      <ListGroup.Item
-                        key={u._id}
-                        action
-                        onClick={() => openChat(u._id)}
-                        className={`d-flex align-items-center ${
-                          isActive
-                            ? "bg-primary text-white"
-                            : "bg-dark text-white"
-                        }`}
-                        style={{ cursor: "pointer", minHeight: "50px" }}
-                      >
-                        {/* Avatar */}
-                        <div
-                          className="rounded-circle d-flex align-items-center justify-content-center me-3"
-                          style={{
-                            width: "40px",
-                            height: "40px",
-                            backgroundColor: "#e3a74d2a",
-                            fontWeight: "600",
-                            fontSize: "16px",
-                          }}
-                        >
-                          {getInitials(u)}
-                        </div>
+              {/* Group Chats */}
+              <div className="mb-3">
+                <h6 className="text-white">Group Chats</h6>
+                {filteredGroupChats.length ? (
+                  renderChatList(filteredGroupChats, true)
+                ) : (
+                  <div className="text-light text-center py-2">
+                    No group chats
+                  </div>
+                )}
+              </div>
 
-                        {/* Name */}
-                        <div className="flex-grow-1 d-flex align-items-center">
-                          <strong>
-                            {u.firstName} {u.lastName}
-                          </strong>
-                        </div>
-                      </ListGroup.Item>
-                    );
-                  })}
-                </ListGroup>
-              )}
+              {/* Start new chat */}
+              <Accordion defaultActiveKey="0" flush>
+                <Accordion.Item
+                  eventKey="0"
+                  disabled={usersNotInChats.length === 0}
+                  className="bg-dark text-white border-0"
+                >
+                  <Accordion.Header
+                    className="bg-dark text-white"
+                    style={{
+                      backgroundColor: "#1a1a1a",
+                      color: "white",
+                    }}
+                  >
+                    Start New Chat
+                  </Accordion.Header>
+
+                  <Accordion.Body
+                    style={{ padding: 0, backgroundColor: "#1a1a1a" }}
+                  >
+                    {usersNotInChats.length > 0 ? (
+                      <ListGroup variant="flush" className="bg-dark text-white">
+                        {usersNotInChats.map((u) => (
+                          <ListGroup.Item
+                            key={u._id}
+                            action
+                            onClick={() => openChat(u._id)}
+                            className="d-flex align-items-center bg-dark text-white"
+                          >
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center me-3"
+                              style={{
+                                width: "40px",
+                                height: "40px",
+                                backgroundColor: "#e3a74d2a",
+                                fontWeight: "600",
+                                fontSize: "16px",
+                              }}
+                            >
+                              {u.firstName[0].toUpperCase()}
+                              {u.lastName[0]?.toUpperCase()}
+                            </div>
+                            <strong>
+                              {u.firstName} {u.lastName}
+                            </strong>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    ) : (
+                      <div className="text-center text-light py-2">
+                        No users to start chat
+                      </div>
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+              </Accordion>
             </div>
 
             {/* Bottom Buttons */}
-            <div className="mt-auto d-flex flex-column gap-2 p-2">
+            <div className="mt-auto d-flex flex-column gap-2 p-2 flex-shrink-0">
               <Button
                 variant="primary"
                 className="d-flex align-items-center justify-content-center gap-2 w-100"
@@ -250,7 +331,6 @@ const ChatLayout = () => {
               >
                 ➕ Create Group
               </Button>
-
               <Button
                 variant="outline-primary"
                 className="d-flex align-items-center justify-content-center gap-2 w-100"
@@ -258,7 +338,6 @@ const ChatLayout = () => {
               >
                 <FaUser /> User Details
               </Button>
-
               <Button
                 variant="outline-danger"
                 className="d-flex align-items-center justify-content-center gap-2 w-100"
@@ -280,20 +359,65 @@ const ChatLayout = () => {
           {activeChat ? (
             <>
               {/* Header */}
-              <div className="border-bottom p-2 flex-shrink-0 bg-dark text-white">
-                {activeChat.isGroup ? (
-                  <strong>{activeChat.name}</strong>
-                ) : (
-                  (() => {
-                    const otherUser = activeChat.members.find(
-                      (m) => m._id !== user._id
-                    );
-                    return (
-                      <strong>
-                        Chat with {otherUser?.firstName} {otherUser?.lastName}
-                      </strong>
-                    );
-                  })()
+              <div className="border-bottom p-2 flex-shrink-0 bg-dark text-white d-flex justify-content-between align-items-center">
+                <div>
+                  {activeChat.isGroup ? (
+                    <strong>
+                      Group Chat:{" "}
+                      {activeChat.name.charAt(0).toUpperCase() +
+                        activeChat.name.slice(1)}
+                    </strong>
+                  ) : (
+                    (() => {
+                      const otherUser = activeChat.members.find(
+                        (m) => m._id !== user._id
+                      );
+                      const firstName =
+                        otherUser?.firstName.charAt(0).toUpperCase() +
+                        otherUser?.firstName.slice(1);
+                      const lastName =
+                        otherUser?.lastName.charAt(0).toUpperCase() +
+                        otherUser?.lastName.slice(1);
+                      return (
+                        <strong>
+                          Chat with {firstName} {lastName}
+                        </strong>
+                      );
+                    })()
+                  )}
+                </div>
+
+                {/* Group Members */}
+                {activeChat.isGroup && (
+                  <div
+                    className="d-flex align-items-center gap-1 flex-wrap"
+                    style={{ maxWidth: "50%" }}
+                  >
+                    {activeChat.members.map((member) => (
+                      <OverlayTrigger
+                        key={member._id}
+                        placement="bottom"
+                        overlay={
+                          <Tooltip id={`tooltip-${member._id}`}>
+                            {member.firstName} {member.lastName}
+                          </Tooltip>
+                        }
+                      >
+                        <div
+                          className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                          style={{
+                            width: "30px",
+                            height: "30px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {member.firstName[0].toUpperCase()}
+                          {member.lastName[0]?.toUpperCase()}
+                        </div>
+                      </OverlayTrigger>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -307,7 +431,6 @@ const ChatLayout = () => {
                   messages.map((msg) => {
                     const isMine = msg.senderId._id === user._id;
                     const senderName = isMine ? "You" : msg.senderId.firstName;
-
                     return (
                       <div
                         key={msg._id}
@@ -320,7 +443,7 @@ const ChatLayout = () => {
                         <div
                           className="text-white"
                           style={{
-                            maxWidth: "50%", // compact width
+                            maxWidth: "50%",
                             wordBreak: "break-word",
                             overflowWrap: "break-word",
                             display: "inline-block",
@@ -329,8 +452,8 @@ const ChatLayout = () => {
                             borderRadius: "20px",
                             animation: "fadeIn 0.3s ease-in-out",
                             background: isMine
-                              ? "linear-gradient(135deg, #4e54c8, #8f94fb)" // sender gradient (right)
-                              : "linear-gradient(135deg, #34e89e, #0f3443)", // receiver gradient (left)
+                              ? "linear-gradient(135deg, #4e54c8, #8f94fb)"
+                              : "linear-gradient(135deg, #34e89e, #0f3443)",
                             boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
                             padding: "10px",
                           }}
@@ -375,14 +498,6 @@ const ChatLayout = () => {
 
               {/* Input */}
               <div className="d-flex p-3 border-top flex-shrink-0">
-                <style>
-                  {`
-      .chat-input::placeholder {
-        color: #f8f9fa; 
-        opacity: 1;
-      }
-    `}
-                </style>
                 <Form.Control
                   type="text"
                   placeholder="Type a message..."
@@ -391,7 +506,7 @@ const ChatLayout = () => {
                   className="me-2 border-0 chat-input"
                   style={{
                     fontSize: "14px",
-                    color: "white", // typed text
+                    color: "white",
                     backgroundColor: "#343a40",
                     minHeight: "40px",
                   }}
@@ -418,7 +533,7 @@ const ChatLayout = () => {
       <GroupChat
         show={showGroupModal}
         onClose={() => setShowGroupModal(false)}
-        users={filteredChatUsers}
+        users={chatUsers.filter((u) => u._id !== user._id)}
         currentUser={user}
       />
     </Container>

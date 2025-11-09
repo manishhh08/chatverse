@@ -69,7 +69,16 @@ const GroupChat = ({ show, onClose, users, currentUser }) => {
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={handleCreate}>
+        <Button
+          variant="primary"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleCreate();
+            }
+          }}
+          onClick={handleCreate}
+        >
           Create Group
         </Button>
       </Modal.Footer>
