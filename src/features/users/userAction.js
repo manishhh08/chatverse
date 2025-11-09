@@ -14,11 +14,9 @@ import {
   setChatUsers,
 } from "./userSlice";
 import {
-  storeAccessToken,
-  storeRefreshToken,
-  deleteAccessToken,
-  deleteRefreshToken,
   getAccessToken,
+  storeUser,
+  removeStoredUser,
 } from "../../utils/storageFunction";
 import { socket } from "../../socketSetup/SocketContext";
 
@@ -64,10 +62,7 @@ export const loginUserAction = (form) => async (dispatch) => {
     const data = await loginUserApi(form);
 
     if (data?.status === "success" && data?.user) {
-      storeAccessToken(data?.accessToken);
-      storeRefreshToken(data?.refreshToken);
-
-      localStorage.setItem("user", JSON.stringify(data?.user));
+      storeUser(data);
 
       dispatch(setUser(data?.user));
 
@@ -103,9 +98,9 @@ export const getChatUsersAction = () => async (dispatch) => {
 };
 
 export const fetchUserAction = () => async (dispatch, getState) => {
-  const token = getAccessToken(); // check token
+  const token = getAccessToken();
 
-  if (!token) return; // skip fetch entirely if no token
+  if (!token) return;
 
   try {
     dispatch(setLoading(true));
@@ -130,8 +125,6 @@ export const verifyEmailAction = async (token, email) => {
 export const logoutAction = () => (dispatch) => {
   socket.removeAllListeners();
   socket.disconnect();
-  localStorage.removeItem("user");
+  removeStoredUser();
   dispatch(logoutUser());
-  deleteAccessToken();
-  deleteRefreshToken();
 };

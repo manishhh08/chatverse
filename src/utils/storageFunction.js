@@ -27,23 +27,18 @@ export const storeToken = (token, type) => {
   if (type == "refresh") storeRefreshToken(token);
 };
 
-export const storeUser = (user) => {
-  if (!user) return;
-  localStorage.setItem("chatAppUser", JSON.stringify(user));
+export const storeUser = (data) => {
+  storeAccessToken(data?.accessToken);
+  storeRefreshToken(data?.refreshToken);
+  sessionStorage.setItem("user", JSON.stringify(data?.user));
 };
 
-// Get stored user from localStorage
 export const getStoredUser = () => {
-  try {
-    const user = localStorage.getItem("chatAppUser");
-    return user ? JSON.parse(user) : null;
-  } catch (err) {
-    console.error("Failed to parse stored user:", err);
-    return null;
-  }
+  return sessionStorage.getItem("user");
 };
 
-// Remove user on logout
 export const removeStoredUser = () => {
-  localStorage.removeItem("chatAppUser");
+  sessionStorage.removeItem("user");
+  deleteAccessToken();
+  deleteRefreshToken();
 };

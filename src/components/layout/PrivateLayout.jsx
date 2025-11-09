@@ -1,29 +1,14 @@
-import { Outlet, useNavigate } from "react-router-dom";
-import Auth from "../../Auth/Auth";
+import { Navigate, Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect } from "react";
-import { fetchUserAction } from "../../features/users/userAction";
-import { getAccessToken } from "../../utils/storageFunction";
 
 const PrivateLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user, loading } = useSelector((store) => store.userStore);
-  const token = getAccessToken();
+  const { user } = useSelector((store) => store.userStore);
 
-  useEffect(() => {
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-    dispatch(fetchUserAction());
-  }, [dispatch, token, navigate]);
-
-  useEffect(() => {
-    if (!loading && !user?._id) {
-      navigate("/login");
-    }
-  }, [user, loading, navigate]);
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <main className="bg-dark text-white d-flex flex-column min-vh-100">

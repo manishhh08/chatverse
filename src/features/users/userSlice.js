@@ -1,7 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
+const storedUser = JSON.parse(sessionStorage.getItem("user"));
 
 const initialState = {
-  user: JSON.parse(localStorage.getItem("user")) || null,
+  user: storedUser || null,
   loading: false,
   chatUsers: [],
   isLogginOut: false,
