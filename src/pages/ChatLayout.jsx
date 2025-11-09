@@ -40,6 +40,9 @@ const ChatLayout = () => {
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const typingTimeoutRef = useRef(null);
 
   // Redux
   const { user, chatUsers = [] } = useSelector((store) => store.userStore);
@@ -76,17 +79,25 @@ const ChatLayout = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!restoredRef.current) {
-      const savedChatId = localStorage.getItem("activeChatId");
-      if (savedChatId) openChatById(savedChatId);
-      restoredRef.current = true;
+    if (activeChat) {
+      localStorage.setItem("activeChatId", activeChat._id);
     }
-  }, [openChatById]);
+  }, [activeChat]);
 
   useEffect(() => {
     if (!socket) return;
 
-    const handleConnect = () => setSocketConnected(true);
+    const handleConnect = () => {
+      setSocketConnected(true);
+
+      // Rejoin previously active chat
+      const savedChatId = localStorage.getItem("activeChatId");
+      if (savedChatId) {
+        socket.emit("join_chat", savedChatId);
+        dispatch(openChatById(savedChatId));
+      }
+    };
+
     const handleDisconnect = () => setSocketConnected(false);
 
     socket.on("connect", handleConnect);
@@ -102,11 +113,11 @@ const ChatLayout = () => {
     if (!socket || !socketConnected || !activeChat) return;
 
     const chatId = activeChat._id;
-
+    //leaving chats
     if (prevChatRef.current && prevChatRef.current !== chatId) {
       socket.emit("leave_chat", prevChatRef.current);
     }
-
+    //rejoining the chat
     socket.emit("join_chat", chatId);
     prevChatRef.current = chatId;
 
@@ -118,9 +129,27 @@ const ChatLayout = () => {
       }
     };
 
-    socket.on("receive_message", handleReceiveMessage);
+    const handleTyping = ({ userId }) => {
+      if (userId !== user._id) {
+        setTypingUsers((prev) =>
+          prev.includes(userId) ? prev : [...prev, userId]
+        );
+      }
+    };
 
-    return () => socket.off("receive_message", handleReceiveMessage);
+    const handleStopTyping = ({ userId }) => {
+      setTypingUsers((prev) => prev.filter((id) => id !== userId));
+    };
+
+    socket.on("receive_message", handleReceiveMessage);
+    socket.on("typing", handleTyping);
+    socket.on("stop_typing", handleStopTyping);
+
+    return () => {
+      socket.off("receive_message", handleReceiveMessage);
+      socket.off("typing", handleTyping);
+      socket.off("stop_typing", handleStopTyping);
+    };
   }, [socket, socketConnected, activeChat, dispatch]);
 
   useEffect(() => {
@@ -141,6 +170,9 @@ const ChatLayout = () => {
 
     dispatch(sendMessageAction(message));
     setMessageInput("");
+
+    socket.emit("stop_typing", { chatId: activeChat._id, userId: user._id });
+    setIsTyping(false);
   };
 
   const handleLogout = () => {
@@ -496,13 +528,55 @@ const ChatLayout = () => {
                 )}
               </div>
 
+              <div
+                style={{
+                  minHeight: "20px",
+                  color: "#ccc",
+                  fontSize: "12px",
+                  paddingLeft: "12px",
+                }}
+              >
+                {typingUsers.length > 0 && (
+                  <div className="px-3 text-muted small">
+                    {typingUsers.length === 1
+                      ? `${typingUsers
+                          .map(
+                            (id) =>
+                              activeChat.members.find((m) => m._id === id)
+                                ?.firstName
+                          )
+                          .join(", ")} is typing...`
+                      : "Multiple users are typing..."}
+                  </div>
+                )}
+              </div>
+
               {/* Input */}
               <div className="d-flex p-3 border-top flex-shrink-0">
                 <Form.Control
                   type="text"
                   placeholder="Type a message..."
                   value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  onChange={(e) => {
+                    setMessageInput(e.target.value);
+                    if (!isTyping && activeChat) {
+                      setIsTyping(true);
+                      socket.emit("typing", {
+                        chatId: activeChat._id,
+                        userId: user._id,
+                      });
+                    }
+                    clearTimeout(typingTimeoutRef.current);
+                    typingTimeoutRef.current = setTimeout(() => {
+                      setIsTyping(false);
+                      if (activeChat) {
+                        socket.emit("stop_typing", {
+                          chatId: activeChat._id,
+                          userId: user._id,
+                        });
+                      }
+                    }, 2000);
+                  }}
                   className="me-2 border-0 chat-input"
                   style={{
                     fontSize: "14px",
