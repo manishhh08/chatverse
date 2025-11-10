@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
 import {
-  Form,
-  Button,
   Card,
-  Alert,
-  Spinner,
-  Row,
+  Button,
   Col,
+  Row,
   Badge,
+  Alert,
+  Container,
+  Form,
 } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { logoutAction, updateUserAction } from "../features/users/userAction";
 import { toast } from "react-toastify";
 import { FaUser, FaComments, FaSignOutAlt } from "react-icons/fa";
+import { updateUserAction, logoutAction } from "../features/users/userAction";
+import { CustomInput } from "../components/custominput/CustomInput";
 
 const UpdateProfile = () => {
   const { user } = useSelector((store) => store.userStore);
@@ -67,32 +68,22 @@ const UpdateProfile = () => {
     setLoading(false);
   };
 
-  const getInitials = (firstName, lastName) => {
-    return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
-  };
-
   const handleLogout = () => {
     dispatch(logoutAction());
     toast.success("Logout successful");
     navigate("/", { replace: true });
   };
 
+  const getInitials = (firstName, lastName) =>
+    `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "#1c1c1e",
-        padding: "20px",
-      }}
+    <Container
+      fluid
+      className="min-vh-100 d-flex justify-content-center align-items-center bg-dark py-4"
     >
       <Col xs={12} md={8} lg={6}>
-        <Card
-          className="shadow-lg p-4 rounded-4 border-0 text-center"
-          style={{ backgroundColor: "#2c2c2e", color: "#fff" }}
-        >
+        <Card className="shadow-lg rounded-4 border-0 text-center bg-secondary text-light p-4">
           {/* Initials Badge */}
           <Badge
             bg="primary"
@@ -102,27 +93,29 @@ const UpdateProfile = () => {
             {getInitials(formData.firstName, formData.lastName)}
           </Badge>
 
+          {/* Header with Chat & Logout */}
           <div className="d-flex justify-content-between align-items-center mb-4 px-2">
-            <h3 className="mb-0">
+            <h3 className="mb-0 d-flex align-items-center">
               <FaUser className="me-2 text-primary" /> Update Profile
             </h3>
 
-            {/* Wrap buttons in a flex container with small gap */}
             <div className="d-flex align-items-center gap-2">
+              {/* Go to Chat button */}
               <Button
-                variant="outline-primary"
+                variant="primary"
                 onClick={() => navigate("/chat")}
-                className="d-flex align-items-center gap-1"
+                className="d-flex align-items-center justify-content-center gap-2 px-3 py-2 rounded-3 text-white"
               >
-                <FaComments /> Go to Chat
+                <FaComments size={18} /> Go to Chat
               </Button>
 
+              {/* Logout button */}
               <Button
-                variant="outline-danger"
+                variant="danger"
                 onClick={handleLogout}
-                className="d-flex align-items-center gap-1"
+                className="d-flex align-items-center justify-content-center gap-2 px-3 py-2 rounded-3 text-white"
               >
-                <FaSignOutAlt /> Logout
+                <FaSignOutAlt size={18} /> Logout
               </Button>
             </div>
           </div>
@@ -133,78 +126,68 @@ const UpdateProfile = () => {
           <Form onSubmit={handleSubmit}>
             <Row className="mb-3">
               <Col>
-                <Form.Label>First Name</Form.Label>
-                <Form.Control
+                <CustomInput
+                  label="First Name"
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder="First name"
                   required
-                  style={{
-                    backgroundColor: "#3a3a3c",
-                    color: "#fff",
-                    border: "none",
-                  }}
+                  className="bg-dark text-light border-0"
                 />
               </Col>
               <Col>
-                <Form.Label>Last Name</Form.Label>
-                <Form.Control
+                <CustomInput
+                  label="Last Name"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
                   placeholder="Last name"
                   required
-                  style={{
-                    backgroundColor: "#3a3a3c",
-                    color: "#fff",
-                    border: "none",
-                  }}
+                  className="bg-dark text-light border-0"
                 />
               </Col>
             </Row>
-            <Form.Group className="mb-3">
-              <Form.Label>Email</Form.Label>
-              <Form.Control
-                name="email"
-                value={formData.email}
-                readOnly
-                style={{
-                  cursor: "not-allowed",
-                  backgroundColor: "#3a3a3c",
-                  color: "#fff",
-                  border: "none",
-                }}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Username</Form.Label>
-              <Form.Control
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                placeholder="Username"
-                required
-                style={{
-                  backgroundColor: "#3a3a3c",
-                  color: "#fff",
-                  border: "none",
-                }}
-              />
-            </Form.Group>
+
+            <CustomInput
+              label="Email"
+              name="email"
+              value={formData.email}
+              readOnly
+              className="bg-dark text-light border-0"
+            />
+
+            <CustomInput
+              label="Username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="Username"
+              required
+              className="bg-dark text-light border-0"
+            />
+
+            <CustomInput
+              label="Phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="Phone"
+              className="bg-dark text-light border-0"
+            />
 
             <Button
               type="submit"
-              className="w-100 py-2 mt-2"
-              disabled={loading}
+              className="w-100 mt-3 py-2"
               variant="primary"
+              disabled={loading}
             >
               {loading ? "Updating..." : "Update"}
             </Button>
           </Form>
         </Card>
       </Col>
-    </div>
+    </Container>
   );
 };
 

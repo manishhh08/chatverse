@@ -11,8 +11,9 @@ import {
 } from "react-bootstrap";
 import { useNavigate, Link } from "react-router-dom";
 import { FaEnvelope, FaLock } from "react-icons/fa";
-import { loginUserAction } from "../features/users/userAction";
 import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
+import { loginUserAction } from "../features/users/userAction";
+import { CustomInput } from "./custominput/CustomInput";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -20,18 +21,20 @@ const Login = () => {
 
   const { user, error, loading } = useSelector((store) => store.userStore);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect if user is already logged in
   useEffect(() => {
     if (user) navigate("/chat");
   }, [user, navigate]);
 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const data = await dispatch(loginUserAction({ email, password }));
+    const data = await dispatch(loginUserAction(formData));
     if (data?.status === "success") {
       navigate("/chat");
     }
@@ -51,47 +54,42 @@ const Login = () => {
 
             <Form onSubmit={handleSubmit}>
               {/* Email */}
-              <Form.Group className="mb-3" controlId="loginEmail">
-                <Form.Label>Email</Form.Label>
-                <div className="d-flex align-items-center bg-dark rounded-3 px-2">
-                  <FaEnvelope className="text-white me-2" />
-                  <Form.Control
-                    type="email"
-                    placeholder="Enter email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-dark text-white border-0"
-                    style={{ flex: 1 }}
-                  />
-                </div>
-              </Form.Group>
+              <CustomInput
+                label="Email"
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter your email"
+                icon={<FaEnvelope className="text-white me-2" />}
+                required
+              />
 
               {/* Password */}
-              <Form.Group className="mb-1" controlId="loginPassword">
-                <Form.Label>Password</Form.Label>
-                <div className="d-flex align-items-center bg-dark rounded-3 px-2">
-                  <FaLock className="text-white me-2" />
-                  <Form.Control
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-dark text-white border-0"
-                    style={{ flex: 1 }}
-                  />
-                  <span
+              <CustomInput
+                label="Password"
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                icon={<FaLock className="text-white me-2" />}
+                append={
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-white p-0 ms-2"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{ cursor: "pointer" }}
-                    className="ms-2 text-white"
                   >
                     {showPassword ? (
                       <AiFillEyeInvisible size={20} />
                     ) : (
                       <AiFillEye size={20} />
                     )}
-                  </span>
-                </div>
-              </Form.Group>
+                  </Button>
+                }
+                required
+              />
 
               {/* Forgot Password */}
               <div className="text-end mb-3">
@@ -103,7 +101,12 @@ const Login = () => {
                 </Link>
               </div>
 
-              <Button type="submit" disabled={loading} className="w-100 mt-2">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-100 mt-2 py-2"
+                variant="primary"
+              >
                 {loading ? "Logging in..." : "Login"}
               </Button>
             </Form>
