@@ -366,7 +366,7 @@ const ChatLayout = () => {
               <Button
                 variant="outline-primary"
                 className="d-flex align-items-center justify-content-center gap-2 w-100"
-                onClick={() => console.log("User Details")}
+                onClick={() => navigate("/detail")}
               >
                 <FaUser /> User Details
               </Button>

@@ -6,6 +6,7 @@ import Register from "./components/Register";
 import ChatLayout from "./pages/ChatLayout";
 import { ToastContainer } from "react-toastify";
 import Verify from "./pages/Verify";
+import UpdateProfile from "./pages/UpdateProfile";
 
 const App = () => {
   return (
@@ -22,7 +23,7 @@ const App = () => {
         {/* Private routes */}
         <Route element={<PrivateLayout />}>
           <Route path="/chat" element={<ChatLayout />} />
-          {/* <Route path="manage-account" element={<UserProfile />} /> */}
+          <Route path="/detail" element={<UpdateProfile />} />
         </Route>
       </Routes>
 

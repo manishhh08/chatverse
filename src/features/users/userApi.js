@@ -48,7 +48,7 @@ export const verifyEmailAPi = async (token, email) => {
 export const updateUserDetail = async (obj) => {
   return apiProcessor({
     method: "PATCH",
-    url: `${apiUrl}/auth/user`,
+    url: `${apiUrl}/user/detail`,
     data: obj,
     isPrivate: true,
   });

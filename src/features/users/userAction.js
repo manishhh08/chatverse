@@ -4,6 +4,7 @@ import {
   fetchAllUsers,
   fetchUserDetail,
   loginUserApi,
+  updateUserDetail,
   verifyEmailAPi,
 } from "./userApi";
 import {
@@ -97,7 +98,7 @@ export const getChatUsersAction = () => async (dispatch) => {
   }
 };
 
-export const fetchUserAction = () => async (dispatch, getState) => {
+export const fetchUserAction = () => async (dispatch) => {
   const token = getAccessToken();
 
   if (!token) return;
@@ -114,6 +115,25 @@ export const fetchUserAction = () => async (dispatch, getState) => {
     dispatch(setError("Failed to fetch user details"));
   } finally {
     dispatch(setLoading(false));
+  }
+};
+
+export const updateUserAction = (userData) => async (dispatch) => {
+  try {
+    const { status, message, updatedUser } = await updateUserDetail(userData);
+
+    if (status === "success") {
+      dispatch(setUser(updatedUser));
+      storeUser({ user: updatedUser, accessToken: getAccessToken() });
+      return { status, message };
+    }
+
+    return { status: "error", message };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error.response?.data?.message || error.message,
+    };
   }
 };
 
