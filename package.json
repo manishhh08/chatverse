@@ -13,6 +13,7 @@
     "@reduxjs/toolkit": "^2.9.2",
     "axios": "^1.13.1",
     "bootstrap": "^5.3.8",
+    "emoji-picker-react": "^4.15.0",
     "react": "^19.1.1",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.0",

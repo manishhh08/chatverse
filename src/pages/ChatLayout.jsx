@@ -20,11 +20,12 @@ import {
 } from "../features/messages/messageAction";
 import { getChatsAction, useChatActions } from "../features/chats/chatAction";
 import { addMessage } from "../features/messages/messageSlice";
-import { FaSignOutAlt, FaUser } from "react-icons/fa";
+import { FaSignOutAlt, FaSmile, FaUser } from "react-icons/fa";
 import { FiMessageSquare, FiSend, FiUsers } from "react-icons/fi";
 import GroupChat from "../components/GroupChat";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import EmojiPicker from "emoji-picker-react";
 
 const ChatLayout = () => {
   const socket = useSocket();
@@ -42,6 +43,7 @@ const ChatLayout = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const typingTimeoutRef = useRef(null);
 
   // Redux
@@ -94,7 +96,7 @@ const ChatLayout = () => {
       const savedChatId = localStorage.getItem("activeChatId");
       if (savedChatId) {
         socket.emit("join_chat", savedChatId);
-        dispatch(openChatById(savedChatId));
+        openChatById(savedChatId);
       }
     };
 
@@ -201,7 +203,7 @@ const ChatLayout = () => {
           <ListGroup.Item
             key={c._id}
             action
-            onClick={() => openChatById(c._id)}
+            onClick={() => dispatch(openChatById(c._id))}
             className={`d-flex align-items-center ${
               isActive ? "bg-primary text-white" : "bg-dark text-white"
             }`}
@@ -322,7 +324,7 @@ const ChatLayout = () => {
                           <ListGroup.Item
                             key={u._id}
                             action
-                            onClick={() => openChat(u._id)}
+                            onClick={() => dispatch(openChat(u._id))}
                             className="d-flex align-items-center bg-dark text-white"
                           >
                             <div
@@ -551,8 +553,29 @@ const ChatLayout = () => {
                 )}
               </div>
 
+              {/* emoji support */}
+              {showEmojiPicker && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "70px",
+                    right: "20px",
+                    zIndex: 2000,
+                  }}
+                >
+                  <EmojiPicker
+                    theme="dark"
+                    onEmojiClick={(emoji) => {
+                      setMessageInput((prev) => prev + emoji.emoji);
+                    }}
+                  />
+                </div>
+              )}
               {/* Input */}
-              <div className="d-flex p-3 border-top flex-shrink-0">
+              <div
+                className="d-flex p-3 border-top flex-shrink-0"
+                style={{ position: "relative" }}
+              >
                 <Form.Control
                   type="text"
                   placeholder="Type a message..."
@@ -591,6 +614,17 @@ const ChatLayout = () => {
                     }
                   }}
                 />
+
+                {/* Emoji Toggle Button */}
+                <Button
+                  variant="outline-secondary"
+                  className="me-2"
+                  onClick={() => setShowEmojiPicker((prev) => !prev)}
+                >
+                  <FaSmile size={18} />
+                </Button>
+
+                {/* Send Button */}
                 <Button onClick={handleSendMessage}>
                   <FiSend />
                 </Button>
