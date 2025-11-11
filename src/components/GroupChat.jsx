@@ -7,6 +7,7 @@ import { useDispatch } from "react-redux";
 const GroupChat = ({ show, onClose, users, currentUser }) => {
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [groupName, setGroupName] = useState("");
+  const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
 
   const toggleMember = (id) => {
@@ -16,21 +17,31 @@ const GroupChat = ({ show, onClose, users, currentUser }) => {
   };
 
   const handleCreate = async () => {
+    if (loading) return; // stop if already creating
+
     if (!groupName.trim()) return alert("Enter group name.");
     if (selectedMembers.length < 2)
       return alert("Select at least 2 users to form a group.");
 
-    const res = await createChatApi(
-      [...selectedMembers, currentUser._id],
-      true,
-      groupName
-    );
+    setLoading(true);
 
-    if (res?.status === "success") {
-      dispatch(addChat(res.chat));
-      onClose();
-      setSelectedMembers([]);
-      setGroupName("");
+    try {
+      const res = await createChatApi(
+        [...selectedMembers, currentUser._id],
+        true,
+        groupName
+      );
+
+      if (res?.status === "success") {
+        dispatch(addChat(res.chat));
+        onClose();
+        setSelectedMembers([]);
+        setGroupName("");
+      }
+    } catch (err) {
+      alert(err.message || "Failed to create group");
+    } finally {
+      setLoading(false); // ensures loading resets even on error
     }
   };
 
@@ -69,17 +80,8 @@ const GroupChat = ({ show, onClose, users, currentUser }) => {
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button
-          variant="primary"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleCreate();
-            }
-          }}
-          onClick={handleCreate}
-        >
-          Create Group
+        <Button variant="primary" disabled={loading} onClick={handleCreate}>
+          {loading ? "Creating..." : "Create Group"}
         </Button>
       </Modal.Footer>
     </Modal>

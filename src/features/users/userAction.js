@@ -24,12 +24,10 @@ import { socket } from "../../socketSetup/SocketContext";
 // Register user
 export const registerUser = (form) => async (dispatch) => {
   try {
-    dispatch(setLoading(true));
     const data = await createUser(form);
 
     if (data?.status === "success") {
       toast.success(data?.message || "Registered successfully");
-      dispatch(setLoading(false));
       return data;
     } else {
       dispatch(setError(data?.message || "Registration failed"));
@@ -39,8 +37,6 @@ export const registerUser = (form) => async (dispatch) => {
   } catch (err) {
     dispatch(setError(err.message || "Registration failed"));
     toast.error(err.message || "Registration failed");
-  } finally {
-    dispatch(setLoading(false));
   }
 };
 
