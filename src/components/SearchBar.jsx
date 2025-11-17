@@ -1,17 +1,6 @@
-const SearchBar = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const filteredDirectChats = directChats.filter((c) => {
-    if (!searchTerm) return true;
-    const otherUser = c.members.find((m) => m._id !== user._id);
-    return otherUser?.firstName
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-  });
+import { Form } from "react-bootstrap";
 
-  const filteredGroupChats = groupChats.filter((c) => {
-    if (!searchTerm) return true;
-    return c.name.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+const SearchBar = ({ searchTerm, setSearchTerm }) => {
   return (
     <div className="p-2 flex-shrink-0">
       <Form.Control
