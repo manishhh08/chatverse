@@ -1,4 +1,5 @@
 import { Button } from "react-bootstrap";
+import { FaSignOutAlt, FaUser } from "react-icons/fa";
 
 const ActionButtons = ({ onCreateGroup, navigate, handleLogout }) => {
   return (

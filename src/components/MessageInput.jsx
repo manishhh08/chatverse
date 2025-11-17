@@ -2,20 +2,13 @@ import { Form, Button } from "react-bootstrap";
 import { FaSmile } from "react-icons/fa";
 import { FiSend } from "react-icons/fi";
 import EmojiPicker from "emoji-picker-react";
+import { useState } from "react";
 
-const MessageInput = ({
-  messageInput,
-  setMessageInput,
-  handleSendMessage,
-  showEmojiPicker,
-  setShowEmojiPicker,
-  isTyping,
-  setIsTyping,
-  socket,
-  activeChat,
-  user,
-  typingTimeoutRef,
-}) => {
+const MessageInput = ({ socket, activeChat, user, typingTimeoutRef }) => {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [messageInput, setMessageInput] = useState("");
+
   const onChange = (value) => {
     setMessageInput(value);
 
@@ -36,6 +29,22 @@ const MessageInput = ({
         }
       }, 2000);
     }
+  };
+  const handleSendMessage = () => {
+    if (!messageInput.trim() || !activeChat || !user) return;
+
+    const message = {
+      chatId: activeChat._id,
+      text: messageInput,
+      senderId: user._id,
+      senderName: user.firstName,
+    };
+
+    dispatch(sendMessageAction(message));
+    setMessageInput("");
+
+    socket.emit("stop_typing", { chatId: activeChat._id, userId: user._id });
+    setIsTyping(false);
   };
 
   return (

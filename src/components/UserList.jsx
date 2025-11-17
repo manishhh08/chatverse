@@ -1,10 +1,10 @@
-import { Button, ListGroup } from "react-bootstrap";
-import { FaSignOutAlt, FaUser } from "react-icons/fa";
+import { ListGroup } from "react-bootstrap";
 import { FiUsers } from "react-icons/fi";
+import NewUser from "./NewUser";
+import ActionButtons from "./ActionButtons";
+import { useSelector } from "react-redux";
 
 const UserList = ({
-  directChats = [],
-  groupChats = [],
   user,
   activeChat,
   openChatById,
@@ -13,9 +13,29 @@ const UserList = ({
   onCreateGroup,
   navigate,
   handleLogout,
+  searchTerm = "",
 }) => {
+  const { chats } = useSelector((store) => store.chatStore);
+
   const getInitials = (u) =>
     `${u?.firstName?.[0] || ""}${u?.lastName?.[0] || ""}`.toUpperCase();
+
+  const directChats = chats.filter((c) => !c.isGroup);
+  const groupChats = chats.filter((c) => c.isGroup);
+  // Filter chats based on searchTerm
+  const filteredDirectChats = directChats.filter((c) => {
+    if (!searchTerm) return true;
+    const otherUser = c.members.find((m) => m._id !== user._id);
+    const fullName = `${otherUser?.firstName || ""} ${
+      otherUser?.lastName || ""
+    }`;
+    return fullName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const filteredGroupChats = groupChats.filter((c) => {
+    if (!searchTerm) return true;
+    return c.name?.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const renderChatList = (chatList, isGroup = false) => (
     <ListGroup variant="flush" className="bg-dark text-white">
@@ -65,30 +85,52 @@ const UserList = ({
   );
 
   return (
-    <>
+    <div
+      className="d-flex flex-column flex-grow-1"
+      style={{ minHeight: 0, overflow: "hidden" }}
+    >
+      {/* Scrollable content */}
       <div
         className="flex-grow-1 overflow-auto"
-        style={{ minHeight: 0, padding: "0 0.5rem" }}
+        style={{ padding: "0 0.5rem" }}
       >
+        {/* Direct Chats */}
         <div className="mb-3">
           <h6 className="text-white">Direct Chats</h6>
-          {directChats.length ? (
-            renderChatList(directChats)
+          {filteredDirectChats.length ? (
+            renderChatList(filteredDirectChats)
           ) : (
             <div className="text-muted text-center py-2">No direct chats</div>
           )}
         </div>
 
+        {/* Group Chats */}
         <div className="mb-3">
           <h6 className="text-white">Group Chats</h6>
-          {groupChats.length ? (
-            renderChatList(groupChats, true)
+          {filteredGroupChats.length ? (
+            renderChatList(filteredGroupChats, true)
           ) : (
             <div className="text-light text-center py-2">No group chats</div>
           )}
         </div>
+
+        {/* New Users */}
+        <div className="mb-3">
+          <NewUser
+            usersNotInChats={usersNotInChats}
+            openChat={openChat}
+            searchTerm={searchTerm}
+          />
+        </div>
       </div>
-    </>
+
+      {/* Action Buttons */}
+      <ActionButtons
+        onCreateGroup={onCreateGroup}
+        navigate={navigate}
+        handleLogout={handleLogout}
+      />
+    </div>
   );
 };
 
