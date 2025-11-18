@@ -2,12 +2,30 @@ import { Form, Button } from "react-bootstrap";
 import { FaSmile } from "react-icons/fa";
 import { FiSend } from "react-icons/fi";
 import EmojiPicker from "emoji-picker-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { sendMessageAction } from "../features/messages/messageAction";
 
 const MessageInput = ({ socket, activeChat, user, typingTimeoutRef }) => {
+  const dispatch = useDispatch();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [messageInput, setMessageInput] = useState("");
+
+  // ✅ Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const isPicker = e.target.closest(".emoji-picker-wrapper");
+      const isButton = e.target.closest(".emoji-toggle-btn");
+
+      if (!isPicker && !isButton) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const onChange = (value) => {
     setMessageInput(value);
@@ -30,6 +48,7 @@ const MessageInput = ({ socket, activeChat, user, typingTimeoutRef }) => {
       }, 2000);
     }
   };
+
   const handleSendMessage = () => {
     if (!messageInput.trim() || !activeChat || !user) return;
 
@@ -51,6 +70,7 @@ const MessageInput = ({ socket, activeChat, user, typingTimeoutRef }) => {
     <>
       {showEmojiPicker && (
         <div
+          className="emoji-picker-wrapper"
           style={{
             position: "absolute",
             bottom: "70px",
@@ -60,15 +80,15 @@ const MessageInput = ({ socket, activeChat, user, typingTimeoutRef }) => {
         >
           <EmojiPicker
             theme="dark"
-            onEmojiClick={(emoji) => {
-              setMessageInput((prev) => prev + emoji.emoji);
-            }}
+            onEmojiClick={(emoji) =>
+              setMessageInput((prev) => prev + emoji.emoji)
+            }
           />
         </div>
       )}
 
       <div
-        className="d-flex p-3 border-top flex-shrink-0"
+        className="d-flex p-3 border-top flex-shrink-0 chat-input"
         style={{ position: "relative" }}
       >
         <Form.Control
@@ -93,7 +113,7 @@ const MessageInput = ({ socket, activeChat, user, typingTimeoutRef }) => {
 
         <Button
           variant="outline-secondary"
-          className="me-2"
+          className="me-2 emoji-toggle-btn"
           onClick={() => setShowEmojiPicker((p) => !p)}
         >
           <FaSmile size={18} />

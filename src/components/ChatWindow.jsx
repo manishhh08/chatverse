@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { FiMessageSquare, FiSend } from "react-icons/fi";
+import { OverlayTrigger, Tooltip } from "react-bootstrap";
 
 const ChatWindow = ({
   activeChat,
@@ -52,21 +53,37 @@ const ChatWindow = ({
                 className="d-flex align-items-center gap-1 flex-wrap"
                 style={{ maxWidth: "50%" }}
               >
-                {activeChat.members.map((member) => (
-                  <div
-                    key={member._id}
-                    className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
-                    style={{
-                      width: "30px",
-                      height: "30px",
-                      fontSize: "12px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {member.firstName?.[0]?.toUpperCase()}
-                    {member.lastName?.[0]?.toUpperCase()}
-                  </div>
-                ))}
+                {activeChat.members.map((member) => {
+                  const initials =
+                    (member.firstName?.[0] || "").toUpperCase() +
+                    (member.lastName?.[0] || "").toUpperCase();
+
+                  const fullName = `${member.firstName} ${member.lastName}`;
+
+                  return (
+                    <OverlayTrigger
+                      key={member._id}
+                      placement="bottom"
+                      overlay={
+                        <Tooltip id={`tooltip-${member._id}`}>
+                          {fullName}
+                        </Tooltip>
+                      }
+                    >
+                      <div
+                        className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                        style={{
+                          width: "30px",
+                          height: "30px",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {initials}
+                      </div>
+                    </OverlayTrigger>
+                  );
+                })}
               </div>
             )}
           </div>

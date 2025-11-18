@@ -1,0 +1,4 @@
+.chat-input::placeholder {
+  color: #aaa !important;
+  opacity: 1;
+}
