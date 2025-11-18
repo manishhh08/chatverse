@@ -62,7 +62,7 @@ const Verify = () => {
             <Button
               className="text-white fw-bold px-4 mt-2"
               onClick={() => {
-                navigate("/auth?tab=login");
+                navigate("/login");
               }}
             >
               Go to Login
