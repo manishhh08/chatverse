@@ -62,10 +62,10 @@ const Register = () => {
 
     setLoading(false);
 
-    if (data.status === "success") {
+    if (data?.status === "success") {
       navigate("/login");
     } else {
-      setError(data.message || "Registration failed");
+      setError(data?.message || "Registration failed");
     }
   };
 

@@ -37,6 +37,7 @@ export const registerUser = (form) => async (dispatch) => {
   } catch (err) {
     dispatch(setError(err.message || "Registration failed"));
     toast.error(err.message || "Registration failed");
+    return err;
   }
 };
 
