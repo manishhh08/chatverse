@@ -9,6 +9,7 @@ export const fetchMessageApi = async (chatId) => {
   });
 };
 
+//todo: add image support here
 export const sendMessageApi = async (msgData) => {
   return apiProcessor({
     method: "post",

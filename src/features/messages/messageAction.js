@@ -26,6 +26,7 @@ export const retrieveMessages = (chatId) => async (dispatch) => {
 };
 
 // Send a message for a specific chat
+//todo:support image messages
 export const sendMessageAction = (message) => async (dispatch) => {
   try {
     // Send message to backend
